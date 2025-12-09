@@ -8,11 +8,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class FakeDatabase {
+public class Database {
 
     private final List<User> users = new ArrayList<>();
 
-    public FakeDatabase() {
+    public Database() {
 
         // Tạo Person giả để không bị lỗi constructor
         Person p1 = new Person();

@@ -1,14 +1,14 @@
 package org.example.service;
 
 import org.example.domain.User;
-import org.example.repository.FakeDatabase;
+import org.example.repository.Database;
 
 public class AuthService {
 
-    private final FakeDatabase db;
+    private final Database db;
     private User currentUser;
 
-    public AuthService(FakeDatabase db) {
+    public AuthService(Database db) {
         this.db = db;
     }
 

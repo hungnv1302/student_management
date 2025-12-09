@@ -11,7 +11,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.example.domain.User;
-import org.example.repository.FakeDatabase;
+import org.example.repository.Database;
 import org.example.service.AuthService;
 
 import java.io.IOException;
@@ -29,7 +29,7 @@ public class LoginController {
     @FXML
     public void initialize() {
         // Khởi tạo "cơ sở dữ liệu" giả và service đăng nhập
-        authService = new AuthService(new FakeDatabase());
+        authService = new AuthService(new Database());
     }
 
     @FXML
