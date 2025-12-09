@@ -1,4 +1,7 @@
 package org.example.domain;
 
-public class RoleType {
+public enum RoleType {
+    ADMIN,
+    STUDENT,
+    LECTURER
 }
