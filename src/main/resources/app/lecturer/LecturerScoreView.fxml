@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Button?>
+
+<VBox spacing="20.0" style="-fx-padding: 0;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+    <Label text="QUẢN LÝ ĐIỂM SỐ" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #333333;" />
+
+    <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 10; -fx-border-color: #E0E0E0; -fx-border-radius: 5; -fx-background-color: #ECEFF1;">
+        <Label style="-fx-font-weight: bold;" text="Chọn Lớp:" />
+        <TextField prefWidth="350.0" promptText="Nhập Mã Lớp hoặc Tên Môn học" style="-fx-background-radius: 5; -fx-border-color: #CCCCCC;" />
+        <Button style="-fx-background-color: #00796B; -fx-text-fill: white; -fx-background-radius: 5; -fx-cursor: hand;" text="Tải Danh sách" />
+    </HBox>
+
+    <VBox spacing="15.0">
+        <Label text="Danh sách Sinh viên" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #004D40;" />
+        <TableView prefHeight="400.0" style="-fx-border-color: #CCCCCC;">
+            <columns>
+                <TableColumn prefWidth="100.0" text="Mã SV" />
+                <TableColumn prefWidth="250.0" text="Họ Tên SV" />
+                <TableColumn prefWidth="80.0" text="Điểm QT" />
+                <TableColumn prefWidth="80.0" text="Điểm Thi" />
+                <TableColumn prefWidth="80.0" text="Điểm Tổng" />
+                <TableColumn prefWidth="150.0" text="Ghi chú" />
+            </columns>
+        </TableView>
+        <HBox alignment="CENTER_RIGHT" spacing="15.0">
+            <Button mnemonicParsing="false" style="-fx-background-color: #4CAF50; -fx-text-fill: WHITE; -fx-background-radius: 5; -fx-font-weight: bold;" text="💾 Lưu Điểm" />
+            <Button mnemonicParsing="false" style="-fx-background-color: #FF7043; -fx-text-fill: WHITE; -fx-background-radius: 5; -fx-font-weight: bold;" text="✅ CHỐT ĐIỂM" />
+        </HBox>
+    </VBox>
+</VBox>

@@ -13,7 +13,7 @@ public class Main extends Application {
 
         // Mở màn hình login
         SceneNavigator.goTo(
-                "/app/auth/login.fxml",
+                "/app/auth/LoginScene.fxml",
                 "Đăng nhập hệ thống"
         );
     }

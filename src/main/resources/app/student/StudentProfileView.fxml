@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+
+<VBox spacing="15.0" style="-fx-padding: 10;">
+    <Label text="HỒ SƠ CÁ NHÂN" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #004D40;" />
+    <Label text="Đây là nội dung chi tiết về Hồ sơ và Cập nhật thông tin cá nhân." style="-fx-font-size: 14;" />
+    <Button text="Cập nhật thông tin" style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-background-radius: 5;" />
+</VBox>

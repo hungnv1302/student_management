@@ -63,9 +63,9 @@ public class LoginController {
 
             // 5) Điều hướng theo role
             switch (u.role) {
-                case "ADMIN" -> switchScene(event, "/app/admin/admin-dashboard.fxml", "Admin Dashboard");
-                case "LECTURER" -> switchScene(event, "/app/lecturer/lecturer-dashboard.fxml", "Lecturer Dashboard");
-                case "STUDENT" -> switchScene(event, "/app/student/student-dashboard.fxml", "Student Dashboard");
+                case "ADMIN" -> switchScene(event, "/app/admin/AdminScene.fxml", "Admin Dashboard");
+                case "LECTURER" -> switchScene(event, "/app/lecturer/LecturerScene.fxml", "Lecturer Dashboard");
+                case "STUDENT" -> switchScene(event, "/app/student/StudentScene.fxml", "Student Dashboard");
                 default -> setError("Role không hợp lệ: " + u.role);
             }
 
