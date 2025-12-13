@@ -1,28 +1,21 @@
 package org.example;
 
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.example.config.SceneNavigator;
 
 public class Main extends Application {
 
     @Override
-    public void start(Stage stage) throws Exception {
+    public void start(Stage primaryStage) {
+        // Khởi tạo Stage cho SceneNavigator
+        SceneNavigator.init(primaryStage);
 
-        // Load file FXML
-        FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("/app/auth/loginPage.fxml")
+        // Mở màn hình login
+        SceneNavigator.goTo(
+                "/app/auth/login.fxml",
+                "Đăng nhập hệ thống"
         );
-
-        Parent root = loader.load();
-
-        Scene scene = new Scene(root);
-
-        stage.setTitle("Quản lý sinh viên - Đăng nhập");
-        stage.setScene(scene);
-        stage.show();
     }
 
     public static void main(String[] args) {
