@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane prefHeight="520.0" prefWidth="820.0"
+            xmlns="http://javafx.com/javafx/25"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.controller.admin.AdminDashboardController">
+
+    <children>
+        <Label layoutX="310" layoutY="25" text="ADMIN DASHBOARD"/>
+
+        <!-- Quản lí môn học -->
+        <Label layoutX="60" layoutY="80" text="Quản lí môn học"/>
+        <Button layoutX="60" layoutY="115" prefWidth="220" text="Tạo môn học" onAction="#handleCreateSubject"/>
+        <Button layoutX="60" layoutY="155" prefWidth="220" text="Cập nhật môn học" onAction="#handleUpdateSubject"/>
+        <Button layoutX="60" layoutY="195" prefWidth="220" text="Xóa môn học" onAction="#handleDeleteSubject"/>
+
+        <!-- Quản lí lớp học phần -->
+        <Label layoutX="320" layoutY="80" text="Quản lí lớp học phần"/>
+        <Button layoutX="320" layoutY="115" prefWidth="220" text="Tạo lớp học phần" onAction="#handleCreateSection"/>
+        <Button layoutX="320" layoutY="155" prefWidth="220" text="Cập nhật lớp học phần" onAction="#handleUpdateSection"/>
+        <Button layoutX="320" layoutY="195" prefWidth="220" text="Đóng lớp học phần" onAction="#handleCloseSection"/>
+
+        <!-- Phân công giảng viên -->
+        <Label layoutX="580" layoutY="80" text="Phân công giảng viên"/>
+        <Button layoutX="580" layoutY="115" prefWidth="220" text="Gán giảng viên vào lớp" onAction="#handleAssignLecturer"/>
+        <Button layoutX="580" layoutY="155" prefWidth="220" text="Thay đổi giảng viên" onAction="#handleChangeLecturer"/>
+
+        <!-- Quản lí TKB -->
+        <Label layoutX="60" layoutY="280" text="Quản lí TKB"/>
+        <Button layoutX="60" layoutY="315" prefWidth="220" text="Xếp lịch học" onAction="#handleScheduleClass"/>
+        <Button layoutX="60" layoutY="355" prefWidth="220" text="Xếp lịch thi" onAction="#handleScheduleExam"/>
+
+        <!-- Quản lí mở đăng kí -->
+        <Label layoutX="320" layoutY="280" text="Quản lí mở đăng kí"/>
+        <Button layoutX="320" layoutY="315" prefWidth="220" text="Đóng/Mở đăng kí" onAction="#handleToggleRegistration"/>
+        <Button layoutX="320" layoutY="355" prefWidth="220" text="Thiết lập điều kiện" onAction="#handleSetConditions"/>
+    </children>
+</AnchorPane>

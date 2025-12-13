@@ -49,9 +49,12 @@ public class Enrollment {
     public EnrollmentStatus getStatus() { return status; }
     public void setStatus(EnrollmentStatus status) { this.status = status; }
 
-    public double calculateTotal() {
-        this.totalScore = midtermScore * 0.3 + finalScore * 0.6 + otherScore * 0.1;
-        return this.totalScore;
+    public void calculateTotal() {
+        this.totalScore = midtermScore * 0.5 + finalScore * 0.5;
+
+        if (this.totalScore >= 4.0) {
+            this.status = EnrollmentStatus.COMPLETED;
+        }
     }
 
     @Override
