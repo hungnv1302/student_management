@@ -1,22 +1,27 @@
 package org.example.domain;
 
+import org.example.domain.enums.Gender;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Lecturer extends Person {
-
     private String lecturerID;
     private String department;
     private String degree;
     private String position;
     private LocalDate startDate;
 
-    public Lecturer() {
-    }
+    private final List<ClassSection> assignedClasses = new ArrayList<>();
 
-    public Lecturer(String lecturerID, String department, String degree,
-                    String position, LocalDate startDate) {
+    public Lecturer() {}
+
+    public Lecturer(String personID, String fullName, LocalDate dateOfBirth, Gender gender,
+                    String phoneNumber, String email, String address,
+                    String lecturerID, String department, String degree, String position, LocalDate startDate) {
+        super(personID, fullName, dateOfBirth, gender, phoneNumber, email, address);
         this.lecturerID = lecturerID;
         this.department = department;
         this.degree = degree;
@@ -24,34 +29,30 @@ public class Lecturer extends Person {
         this.startDate = startDate;
     }
 
-    public Schedule getTeachingSchedule() {
-        return new Schedule();
-    }
+    public String getLecturerID() { return lecturerID; }
+    public void setLecturerID(String lecturerID) { this.lecturerID = lecturerID; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getDegree() { return degree; }
+    public void setDegree(String degree) { this.degree = degree; }
+
+    public String getPosition() { return position; }
+    public void setPosition(String position) { this.position = position; }
+
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
 
     public List<ClassSection> getAssignedClasses() {
-        return new ArrayList<>();
+        return Collections.unmodifiableList(assignedClasses);
     }
 
-    public List<Student> getStudentsInClass(String classID) {
-        return new ArrayList<>();
+    public void addAssignedClass(ClassSection section) {
+        if (section != null && !assignedClasses.contains(section)) assignedClasses.add(section);
     }
 
-    public void inputScore(String enrollmentID, String type, double value) {
-        System.out.printf("Input %s score %.2f for enrollment %s%n", type, value, enrollmentID);
+    public void removeAssignedClass(ClassSection section) {
+        assignedClasses.remove(section);
     }
-
-    public void updateScore(String enrollmentID, String type, double value) {
-        System.out.printf("Update %s score %.2f for enrollment %s%n", type, value, enrollmentID);
-    }
-
-    public void submitScores(String classID) {
-        System.out.println("Submit scores for class " + classID);
-    }
-
-    public void exportScoreList(String classID) {
-        System.out.println("Export score list for class " + classID);
-    }
-
-    // Getters & setters
-    // (bạn thêm nếu cần)
 }
