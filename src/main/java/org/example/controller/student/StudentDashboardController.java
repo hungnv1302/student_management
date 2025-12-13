@@ -1,18 +1,114 @@
 package org.example.controller.student;
 
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.control.Button;
+import javafx.scene.layout.VBox;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
 public class StudentDashboardController {
 
-    public void handleViewProfile() {}
-    public void handleUpdateProfile() {}
+    // Ánh xạ khu vực nội dung chính
+    @FXML
+    private VBox contentArea;
 
-    public void handleViewSubjects() {}
-    public void handleRegisterSection() {}
-    public void handleDropSection() {}
+    // Ánh xạ các nút Sidebar
+    @FXML
+    private Button profileButton;
+    @FXML
+    private Button registrationButton;
+    @FXML
+    private Button scheduleButton;
+    @FXML
+    private Button scoresButton;
 
-    public void handleViewWeeklyTimetable() {}
-    public void handleViewTodayTimetable() {}
-    public void handleViewExamSchedule() {}
+    // Danh sách tất cả các nút Sidebar để quản lý trạng thái Active
+    private List<Button> sidebarButtons;
 
-    public void handleViewGradesBySubject() {}
-    public void handleViewGpaCpaDrl() {}
+    // Đường dẫn gốc tới các FXML con (View)
+    private static final String VIEW_PATH = "/app/student/";
+    private static final String ACTIVE_STYLE = "-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-font-weight: bold; -fx-font-size: 14;";
+    private static final String INACTIVE_STYLE = "-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;";
+
+
+    @FXML
+    public void initialize() {
+        // Khởi tạo danh sách các nút
+        sidebarButtons = Arrays.asList(profileButton, registrationButton, scheduleButton, scoresButton);
+
+        // Tải View mặc định khi Dashboard được mở (Đã thiết lập là Đăng ký Học phần)
+        loadView("StudentRegistrationView.fxml", registrationButton);
+    }
+
+    // --- Các phương thức xử lý sự kiện (được gọi từ FXML) ---
+
+    @FXML
+    private void profileHandle() {
+        // Tên file FXML con cho Hồ sơ
+        loadView("StudentProfileView.fxml", profileButton);
+    }
+
+    @FXML
+    private void registrationHandle() {
+        // Tên file FXML con cho Đăng ký Học phần (View mặc định)
+        loadView("StudentRegistrationView.fxml", registrationButton);
+    }
+
+    @FXML
+    private void scheduleHandle() {
+        // Tên file FXML con cho Thời khóa biểu
+        loadView("StudentScheduleView.fxml", scheduleButton);
+    }
+
+    @FXML
+    private void scoresHandle() {
+        // Tên file FXML con cho Kết quả Học tập
+        loadView("StudentScoresView.fxml", scoresButton);
+    }
+
+    // ********** CƠ CHẾ TẢI VÀ CHUYỂN ĐỔI VIEW CHÍNH **********
+
+    /**
+     * Phương thức dùng chung để tải FXML con và thay thế nội dung, đồng thời cập nhật trạng thái Menu
+     * @param fxmlName Tên file FXML con (ví dụ: StudentProfileView.fxml)
+     * @param activeButton Nút vừa được nhấn (để tô màu Active)
+     */
+    private void loadView(String fxmlName, Button activeButton) {
+        try {
+            // 1. Cập nhật trạng thái Menu (Active State)
+            updateSidebarStyles(activeButton);
+
+            // 2. Tải View mới
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(VIEW_PATH + fxmlName));
+            Parent view = loader.load();
+
+            // 3. Xóa nội dung cũ và thêm nội dung mới
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(view);
+
+        } catch (IOException e) {
+            System.err.println("Không thể tải FXML: " + VIEW_PATH + fxmlName);
+            // Có thể hiển thị một Label cảnh báo lên contentArea nếu muốn
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Cập nhật màu sắc cho các nút Sidebar: Đặt lại tất cả về inactive, sau đó tô sáng nút active
+     * @param activeButton Nút cần được tô sáng
+     */
+    private void updateSidebarStyles(Button activeButton) {
+        for (Button button : sidebarButtons) {
+            button.setStyle(button == activeButton ? ACTIVE_STYLE : INACTIVE_STYLE);
+        }
+    }
+
+    // Có thể thêm logic xử lý cho nút Hủy Đăng ký (cancelRegistrationButton) tại đây
+    // @FXML
+    // private void cancelRegistrationHandle() {
+    //     // Logic xử lý hủy đăng ký học phần
+    // }
 }

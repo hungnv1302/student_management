@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.TableView?>
+
+<VBox spacing="15.0" style="-fx-padding: 10;">
+    <Label text="KẾT QUẢ HỌC TẬP" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #004D40;" />
+    <Label text="Điểm theo môn, GPA và CPA." style="-fx-font-size: 14;" />
+    <TableView prefHeight="500.0" style="-fx-border-color: #CCCCCC;">
+    </TableView>
+</VBox>
