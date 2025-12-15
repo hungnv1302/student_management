@@ -78,20 +78,34 @@ public class StudentDashboardController {
      */
     private void loadView(String fxmlName, Button activeButton) {
         try {
-            // 1. Cập nhật trạng thái Menu (Active State)
-            updateSidebarStyles(activeButton);
+            String fullPath = VIEW_PATH + fxmlName;
 
-            // 2. Tải View mới
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(VIEW_PATH + fxmlName));
+            // *** PHẦN THAY ĐỔI CẦN THIẾT ***
+            // Sử dụng Context Class Loader để tìm resource, tránh lỗi 'Location is not set'
+            java.net.URL url = Thread.currentThread().getContextClassLoader().getResource(fullPath.substring(1));
+
+            // Hoặc thử cách này nếu cách trên không được (thêm dấu '/' ở đầu nếu cần)
+            // java.net.URL url = getClass().getResource(fullPath);
+            // ********************************
+
+            if (url == null) {
+                System.err.println("LỖI KHÔNG TÌM THẤY RESOURCE");
+                System.err.println("Đường dẫn thử: " + fullPath);
+                // Bạn có thể hiển thị một label báo lỗi lên contentArea tại đây
+                return;
+            }
+
+            // 1. Tải View
+            FXMLLoader loader = new FXMLLoader(url);
             Parent view = loader.load();
 
-            // 3. Xóa nội dung cũ và thêm nội dung mới
+            // 2. Cập nhật Sidebar và View
+            updateSidebarStyles(activeButton);
             contentArea.getChildren().clear();
             contentArea.getChildren().add(view);
 
         } catch (IOException e) {
-            System.err.println("Không thể tải FXML: " + VIEW_PATH + fxmlName);
-            // Có thể hiển thị một Label cảnh báo lên contentArea nếu muốn
+            System.err.println("LỖI IO: Không thể load FXML: " + fxmlName);
             e.printStackTrace();
         }
     }
