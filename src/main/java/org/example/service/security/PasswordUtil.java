@@ -4,7 +4,7 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.SecureRandom;
 import java.util.Base64;
-
+/* Chưa cần thieets verify password
 public class PasswordUtil {
 
     private static final SecureRandom RNG = new SecureRandom();
@@ -43,3 +43,4 @@ public class PasswordUtil {
         return diff == 0;
     }
 }
+*/

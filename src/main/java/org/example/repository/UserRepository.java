@@ -1,80 +1,99 @@
 package org.example.repository;
 
 import org.example.config.DbConfig;
+import org.example.dto.UserDTO;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.Optional;
 
 public class UserRepository {
 
-    public record UserRow(
-            String userId,
-            String username,
-            String passwordHash,
-            String passwordSalt,
-            String role,
-            String state,
-            Timestamp lastLogin
-    ) {}
-
-    public Optional<UserRow> findByUsername(String username) throws SQLException {
+    public Optional<UserDTO> findByUsername(String username) {
         String sql = """
-            SELECT user_id, username, password_hash, password_salt, role, state, last_login
+            SELECT user_id, username, password, role, state, person_id
             FROM public.users
             WHERE username = ?
         """;
+
         try (Connection c = DbConfig.getInstance().getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
+
             ps.setString(1, username);
+
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
-                return Optional.of(new UserRow(
+
+                return Optional.of(new UserDTO(
                         rs.getString("user_id"),
                         rs.getString("username"),
-                        rs.getString("password_hash"),
-                        rs.getString("password_salt"),
+                        rs.getString("password"),
                         rs.getString("role"),
                         rs.getString("state"),
-                        rs.getTimestamp("last_login")
+                        rs.getString("person_id")
                 ));
             }
+
+        } catch (Exception e) {
+            throw new RuntimeException("findByUsername failed", e);
         }
     }
 
-    public boolean updateLastLogin(String userId) throws SQLException {
-        String sql = "UPDATE public.users SET last_login = NOW() WHERE user_id = ?";
-        try (Connection c = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, userId);
-            return ps.executeUpdate() == 1;
-        }
-    }
-
-    public boolean updatePassword(String userId, String newHash, String newSalt) throws SQLException {
-        String sql = "UPDATE public.users SET password_hash=?, password_salt=? WHERE user_id=?";
-        try (Connection c = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, newHash);
-            ps.setString(2, newSalt);
-            ps.setString(3, userId);
-            return ps.executeUpdate() == 1;
-        }
-    }
-
-    public boolean insertUser(String userId, String username, String hash, String salt, String role) throws SQLException {
+    public Optional<UserDTO> findByUserId(String userId) {
         String sql = """
-        INSERT INTO public.users(user_id, username, password_hash, password_salt, role, state)
-        VALUES (?, ?, ?, ?, ?, 'ACTIVE')
-        ON CONFLICT (username) DO NOTHING
-    """;
+            SELECT user_id, username, password, role, state, person_id
+            FROM public.users
+            WHERE user_id = ?
+        """;
+
         try (Connection c = DbConfig.getInstance().getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
+
             ps.setString(1, userId);
-            ps.setString(2, username);
-            ps.setString(3, hash);
-            ps.setString(4, salt);
-            ps.setString(5, role);
-            return ps.executeUpdate() == 1;
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return Optional.empty();
+
+                return Optional.of(new UserDTO(
+                        rs.getString("user_id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("role"),
+                        rs.getString("state"),
+                        rs.getString("person_id")
+                ));
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("findByUserId failed", e);
+        }
+    }
+
+    public void updateLastLogin(String userId) {
+        String sql = "UPDATE public.users SET last_login = NOW() WHERE user_id = ?";
+
+        try (Connection c = DbConfig.getInstance().getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+
+        } catch (Exception ignored) {}
+    }
+
+    public void updatePassword(String userId, String newPassword) {
+        String sql = "UPDATE public.users SET password = ? WHERE user_id = ?";
+
+        try (Connection c = DbConfig.getInstance().getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString(1, newPassword);
+            ps.setString(2, userId);
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            throw new RuntimeException("updatePassword failed", e);
         }
     }
 }
