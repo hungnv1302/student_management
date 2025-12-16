@@ -277,4 +277,53 @@ public class StudentRegistrationService {
             return String.join(", ", slots);
         }
     }
+
+    public List<OpenClassRow> searchOpenClasses(Long studentId, String keyword) {
+        Objects.requireNonNull(studentId, "studentId is null");
+        String k = (keyword == null) ? "" : keyword.trim().toLowerCase();
+
+        String sql =
+                "SELECT cs.class_id, cs.subject_id, s.subject_name, s.credit, " +
+                        "       p.full_name AS lecturer_name " +
+                        "FROM class_sections cs " +
+                        "JOIN subjects s ON s.subject_id = cs.subject_id " +
+                        "JOIN lecturers l ON l.lecturer_id = cs.lecturer_id " +
+                        "JOIN persons p ON p.person_id = l.person_id " +
+                        "JOIN registration_config rc ON rc.semester = cs.semester AND rc.year = cs.year " +
+                        "WHERE rc.is_open = TRUE " +
+                        "  AND NOW() BETWEEN rc.open_at AND rc.close_at " +
+                        "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
+                        "                  WHERE e.student_id = ? AND e.class_id = cs.class_id AND e.status = 'ENROLLED') " +
+                        "  AND (LOWER(s.subject_name) LIKE ? OR CAST(s.subject_id AS TEXT) LIKE ?) " +
+                        "ORDER BY cs.class_id";
+
+        List<OpenClassRow> list = new java.util.ArrayList<>();
+        try (Connection conn = DbConfig.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, studentId);
+            ps.setString(2, "%" + k + "%");  // tìm theo tên môn
+            ps.setString(3, "%" + k + "%");  // tìm theo subject_id dạng text (vì cháu đang dùng SUB+id)
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long classId = rs.getLong("class_id");
+                    long subjectId = rs.getLong("subject_id");
+                    String subjectName = rs.getString("subject_name");
+                    int credit = rs.getInt("credit");
+                    String lecturerName = rs.getString("lecturer_name");
+
+                    String subjectCode = "SUB" + subjectId;
+                    list.add(new OpenClassRow(classId, subjectCode, subjectName, credit, lecturerName));
+                }
+            }
+            return list;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("DB error searchOpenClasses: " + e.getMessage(), e);
+        }
+    }
+
+
+
 }
