@@ -3,6 +3,7 @@ package org.example.controller.student;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.util.Callback;
@@ -13,6 +14,10 @@ import org.example.service.StudentRegistrationService;
 import java.util.List;
 
 public class StudentRegistrationController implements StudentViewContextAware {
+
+    // ===== Search =====
+    @FXML private TextField searchField;
+    @FXML private Button searchButton;
 
     // ===== Table 1: open classes =====
     @FXML private TableView<OpenClassRow> openClassesTable;
@@ -32,61 +37,58 @@ public class StudentRegistrationController implements StudentViewContextAware {
 
     @FXML private Button cancelRegistrationButton;
 
-    // data
     private final ObservableList<OpenClassRow> openData = FXCollections.observableArrayList();
     private final ObservableList<EnrolledRow> enrolledData = FXCollections.observableArrayList();
 
-    // context
     private Long studentId;
     private String username;
 
-    // service (tạm tạo stub, lát cháu thay bằng service thật)
     private final StudentRegistrationService service = new StudentRegistrationService();
 
     @FXML
     public void initialize() {
         bindTables();
-        wireButtons();
 
         openClassesTable.setItems(openData);
         enrolledTable.setItems(enrolledData);
 
-        // Lưu ý: studentId chưa có ở đây nếu cháu truyền context sau khi load view.
-        // Khi setContext được gọi, mình sẽ reload.
+        // nút đỏ có onAction trong FXML rồi thì không cần set lại (tuỳ cháu giữ/bỏ)
+        cancelRegistrationButton.setDisable(true);
+        enrolledTable.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) ->
+                cancelRegistrationButton.setDisable(newV == null)
+        );
+
+        // Enter trong ô search cũng chạy tìm kiếm cho tiện
+        searchField.setOnAction(this::searchHandle);
     }
 
     @Override
     public void setContext(Long studentId, String username) {
         this.studentId = studentId;
         this.username = username;
-        reload();
+        reload(); // load lần đầu
     }
 
-    private void bindTables() {
-        // Table 1 bindings
-        colOpenSubjectCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectCode()));
-        colOpenSubjectName.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectName()));
-        colOpenCredits.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCredits()));
-        colOpenLecturer.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getLecturerName()));
-        colOpenAction.setCellFactory(makeRegisterButtonCell());
+    // ✅ HÀM NÀY BẮT BUỘC PHẢI CÓ vì FXML đang gọi onAction="#searchHandle"
+    @FXML
+    private void searchHandle(ActionEvent e) {
+        if (studentId == null) {
+            error("Thiếu studentId", "Chưa có thông tin sinh viên đăng nhập.");
+            return;
+        }
 
-        // Table 2 bindings
-        colEnrolledClassCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getClassCode()));
-        colEnrolledSubject.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectName()));
-        colEnrolledTime.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getTimeText()));
-        colEnrolledStatus.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getStatus()));
-        colEnrolledAction.setCellFactory(makeDropButtonCell());
+        String keyword = (searchField.getText() == null) ? "" : searchField.getText().trim();
 
-        // UX: click chọn dòng sẽ enable nút "Hủy đăng ký"
-        cancelRegistrationButton.setDisable(true);
-        enrolledTable.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) ->
-                cancelRegistrationButton.setDisable(newV == null)
-        );
-    }
+        try {
+            // Nếu rỗng thì load tất cả
+            List<OpenClassRow> open = keyword.isEmpty()
+                    ? service.getOpenClasses(studentId)
+                    : service.searchOpenClasses(studentId, keyword);
 
-    private void wireButtons() {
-        // Nút đỏ "Hủy Đăng ký" (theo dòng được chọn)
-        cancelRegistrationButton.setOnAction(e -> cancelRegistrationHandle());
+            openData.setAll(open);
+        } catch (RuntimeException ex) {
+            error("Lỗi tìm kiếm", ex.getMessage());
+        }
     }
 
     @FXML
@@ -122,7 +124,6 @@ public class StudentRegistrationController implements StudentViewContextAware {
             reload();
             info("Thành công", "Đã đăng ký: " + row.getSubjectName());
         } catch (RuntimeException ex) {
-            // chỗ này sau này cháu ném BusinessException: trùng lịch/đủ sĩ số/đã đăng ký...
             error("Không thể đăng ký", ex.getMessage());
         }
     }
@@ -130,7 +131,6 @@ public class StudentRegistrationController implements StudentViewContextAware {
     private void reload() {
         if (studentId == null) return;
 
-        // gọi service lấy list (sau này service nối DB thật)
         List<OpenClassRow> open = service.getOpenClasses(studentId);
         List<EnrolledRow> enrolled = service.getEnrolledClasses(studentId);
 
@@ -138,10 +138,23 @@ public class StudentRegistrationController implements StudentViewContextAware {
         enrolledData.setAll(enrolled);
     }
 
+    private void bindTables() {
+        colOpenSubjectCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectCode()));
+        colOpenSubjectName.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectName()));
+        colOpenCredits.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCredits()));
+        colOpenLecturer.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getLecturerName()));
+        colOpenAction.setCellFactory(makeRegisterButtonCell());
+
+        colEnrolledClassCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getClassCode()));
+        colEnrolledSubject.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectName()));
+        colEnrolledTime.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getTimeText()));
+        colEnrolledStatus.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getStatus()));
+        colEnrolledAction.setCellFactory(makeDropButtonCell());
+    }
+
     private Callback<TableColumn<OpenClassRow, Void>, TableCell<OpenClassRow, Void>> makeRegisterButtonCell() {
         return col -> new TableCell<>() {
             private final Button btn = new Button("ĐK");
-
             {
                 btn.setStyle("-fx-background-color: #00796B; -fx-text-fill: white; -fx-background-radius: 5;");
                 btn.setOnAction(e -> {
@@ -149,9 +162,7 @@ public class StudentRegistrationController implements StudentViewContextAware {
                     onRegisterClicked(row);
                 });
             }
-
-            @Override
-            protected void updateItem(Void item, boolean empty) {
+            @Override protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 setGraphic(empty ? null : btn);
             }
@@ -161,7 +172,6 @@ public class StudentRegistrationController implements StudentViewContextAware {
     private Callback<TableColumn<EnrolledRow, Void>, TableCell<EnrolledRow, Void>> makeDropButtonCell() {
         return col -> new TableCell<>() {
             private final Button btn = new Button("Hủy");
-
             {
                 btn.setStyle("-fx-background-color: #D32F2F; -fx-text-fill: white; -fx-background-radius: 5;");
                 btn.setOnAction(e -> {
@@ -175,9 +185,7 @@ public class StudentRegistrationController implements StudentViewContextAware {
                     }
                 });
             }
-
-            @Override
-            protected void updateItem(Void item, boolean empty) {
+            @Override protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 setGraphic(empty ? null : btn);
             }

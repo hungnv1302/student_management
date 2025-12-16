@@ -11,6 +11,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.example.config.DbConfig;
+import org.example.controller.student.StudentDashboardController;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -55,9 +56,9 @@ public class LoginController {
 
             String role = (u.role == null) ? "" : u.role.trim().toUpperCase();
             switch (role) {
-                case "ADMIN" -> switchScene(event, "/app/admin/AdminScene.fxml", "Admin Dashboard");
-                case "LECTURER" -> switchScene(event, "/app/lecturer/LecturerScene.fxml", "Lecturer Dashboard");
-                case "STUDENT" -> switchScene(event, "/app/student/StudentScene.fxml", "Student Dashboard");
+                case "ADMIN" -> switchScene(event, "/app/admin/AdminScene.fxml", "Admin Dashboard", u);
+                case "LECTURER" -> switchScene(event, "/app/lecturer/LecturerScene.fxml", "Lecturer Dashboard", u);
+                case "STUDENT" -> switchScene(event, "/app/student/StudentScene.fxml", "Student Dashboard", u);
                 default -> setError("Role không hợp lệ: " + u.role);
             }
 
@@ -83,7 +84,7 @@ public class LoginController {
                 if (!rs.next()) return null;
 
                 UserRow u = new UserRow();
-                u.userId = rs.getString("user_id");
+                u.userId = rs.getString("user_id");   // ⚠️ giả định user_id chính là MSV dạng số
                 u.username = rs.getString("username");
                 u.password = rs.getString("password");
                 u.role = rs.getString("role");
@@ -110,8 +111,22 @@ public class LoginController {
         String state;
     }
 
-    private void switchScene(ActionEvent event, String fxmlPath, String title) throws Exception {
-        Parent root = FXMLLoader.load(getClass().getResource(fxmlPath));
+    // ✅ SỬA Ở ĐÂY: dùng FXMLLoader để lấy controller và truyền context
+    private void switchScene(ActionEvent event, String fxmlPath, String title, UserRow u) throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
+        Parent root = loader.load();
+
+        // ✅ Nếu là STUDENT dashboard thì truyền studentId/username
+        if ("/app/student/StudentScene.fxml".equals(fxmlPath)) {
+            StudentDashboardController dash = loader.getController();
+
+            // studentId = MSV 8 chữ số (số) -> parse từ user_id
+            Long studentId = Long.parseLong(u.userId);
+
+            dash.setContext(studentId, u.username);
+            dash.openDefaultView(); // load view mặc định sau khi đã có context
+        }
+
         Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
         stage.setTitle(title);
         stage.setScene(new Scene(root));
