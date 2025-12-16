@@ -1,128 +1,102 @@
 package org.example.service;
 
-import org.example.config.DbConfig;
+import org.example.domain.ClassSection;
+import org.example.domain.Student;
+import org.example.domain.TimeSlot;
+import org.example.domain.enums.StudentStatus;
 import org.example.repository.*;
 import org.example.service.exception.BusinessException;
+import org.example.util.TimeSlotUtil;
 
-import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 public class EnrollmentService {
 
-    private final ClassSectionRepository classRepo;
-    private final EnrollmentRepository enrollRepo;
+    private final StudentRepository studentRepo = new StudentRepository();
+    private final SubjectRepository subjectRepo = new SubjectRepository();
+    private final ClassSectionRepository classRepo = new ClassSectionRepository();
+    private final EnrollmentRepository enrollmentRepo = new EnrollmentRepository();
+    private final TimeSlotRepository timeSlotRepo = new TimeSlotRepository();
+    private final RegistrationConfigRepository configRepo = new RegistrationConfigRepository();
 
-    private final ClassSemesterRepository classSemRepo;
-    private final RegistrationConfigRepository regRepo;
-    private final SubjectCreditRepository creditRepo;
-    private final EnrollmentQueryRepository enrollQueryRepo;
-    private final ScheduleConflictRepository conflictRepo;
-    private final PrerequisiteRepository prereqRepo;
+    public void register(String studentId, String classId) throws SQLException {
+        if (studentId == null || studentId.isBlank()) throw new BusinessException("studentId trống");
+        if (classId == null || classId.isBlank()) throw new BusinessException("classId trống");
 
-    public EnrollmentService(
-            ClassSectionRepository classRepo,
-            EnrollmentRepository enrollRepo,
-            ClassSemesterRepository classSemRepo,
-            RegistrationConfigRepository regRepo,
-            SubjectCreditRepository creditRepo,
-            EnrollmentQueryRepository enrollQueryRepo,
-            ScheduleConflictRepository conflictRepo,
-            PrerequisiteRepository prereqRepo
-    ) {
-        this.classRepo = classRepo;
-        this.enrollRepo = enrollRepo;
-        this.classSemRepo = classSemRepo;
-        this.regRepo = regRepo;
-        this.creditRepo = creditRepo;
-        this.enrollQueryRepo = enrollQueryRepo;
-        this.conflictRepo = conflictRepo;
-        this.prereqRepo = prereqRepo;
-    }
+        Student st = studentRepo.findById(studentId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy sinh viên"));
 
-    public boolean register(String studentId, String classId) throws SQLException {
-        if (studentId == null || studentId.isBlank()) throw new BusinessException("StudentID không hợp lệ");
-        if (classId == null || classId.isBlank()) throw new BusinessException("ClassID không hợp lệ");
+        // ✅ Chỉ cho đăng ký khi STUDYING
+        if (st.getStatus() == null || st.getStatus() != StudentStatus.STUDYING) {
+            throw new BusinessException("Sinh viên không ở trạng thái STUDYING");
+        }
 
-        try (Connection c = DbConfig.getInstance().getConnection()) {
-            c.setAutoCommit(false);
-            try {
-                // (0) class tồn tại?
-                if (!classRepo.existsById(classId)) throw new BusinessException("Lớp học phần không tồn tại: " + classId);
+        ClassSection cs = classRepo.findById(classId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy lớp học phần"));
 
-                // (1) lấy semester/year của class + policy
-                var semYear = classSemRepo.getSemYear(classId, c);
-                var policy = regRepo.getPolicy(semYear.semester(), semYear.year(), c);
-                if (!policy.isOpen()) throw new BusinessException("Hiện đang ĐÓNG đăng ký cho " + semYear.semester() + " - " + semYear.year());
+        if (cs.getSubject() == null) throw new BusinessException("Lớp học phần chưa gắn môn học");
 
-                // (2) đã đăng ký chưa
-                if (enrollRepo.existsStudentInClass(studentId, classId, c)) {
-                    throw new BusinessException("Sinh viên đã đăng ký lớp này rồi");
-                }
+        // 1) Check mở/đóng đăng ký
+        var cfg = configRepo.findBySemesterYear(cs.getSemester(), cs.getYear())
+                .orElseThrow(() -> new BusinessException("Chưa cấu hình đăng ký cho kỳ này"));
 
-                // (3) lớp full?
-                int capacity = classRepo.getCapacity(classId, c);
-                int enrolled = classRepo.countEnrolled(classId, c);
-                if (enrolled >= capacity) throw new BusinessException("Lớp đã đầy");
+        if (!cfg.isOpen()) throw new BusinessException("Hệ thống đang đóng đăng ký");
 
-                // (4) giới hạn tín chỉ
-                int currentCredits = enrollQueryRepo.sumCreditsEnrolled(studentId, semYear.semester(), semYear.year(), c);
-                int newCredits = creditRepo.getCreditByClassId(classId, c);
-                if (currentCredits + newCredits > policy.maxCredits()) {
-                    throw new BusinessException("Vượt quá tín chỉ tối đa (" + policy.maxCredits() + "). Hiện tại: " + currentCredits + ", thêm: " + newCredits);
-                }
+        LocalDateTime now = LocalDateTime.now();
+        if (cfg.openAt() != null && now.isBefore(cfg.openAt())) throw new BusinessException("Chưa đến thời gian mở đăng ký");
+        if (cfg.closeAt() != null && now.isAfter(cfg.closeAt())) throw new BusinessException("Đã hết thời gian đăng ký");
 
-                // (5) check trùng lịch với các lớp đã đăng ký cùng kỳ
-                List<String> enrolledClasses = enrollQueryRepo.getEnrolledClassIds(studentId, semYear.semester(), semYear.year(), c);
-                for (String otherClassId : enrolledClasses) {
-                    if (conflictRepo.isConflict(classId, otherClassId, c)) {
-                        throw new BusinessException("Trùng lịch với lớp đã đăng ký: " + otherClassId);
+        // 2) Đã đăng ký lớp này chưa
+        if (enrollmentRepo.isEnrolled(studentId, classId)) {
+            throw new BusinessException("Bạn đã đăng ký lớp này rồi");
+        }
+
+        // 3) Capacity
+        int current = classRepo.countEnrolled(classId);
+        if (current >= cs.getCapacity()) throw new BusinessException("Lớp đã đủ số lượng");
+
+        // 4) Max credits
+        int currentCredits = enrollmentRepo.sumEnrolledCreditsInTerm(studentId, cs.getSemester(), cs.getYear());
+        int newCredits = cs.getSubject().getCredit();
+
+        if (currentCredits + newCredits > cfg.maxCredits()) {
+            throw new BusinessException("Vượt quá số tín chỉ tối đa (" + cfg.maxCredits() + ")");
+        }
+
+        // 5) Trùng lịch (chỉ trong kỳ)
+        List<String> enrolledClassIds = enrollmentRepo.findEnrolledClassIdsInTerm(studentId, cs.getSemester(), cs.getYear());
+        List<TimeSlot> newSlots = timeSlotRepo.findByClassId(classId);
+
+        for (String oldClassId : enrolledClassIds) {
+            List<TimeSlot> oldSlots = timeSlotRepo.findByClassId(oldClassId);
+
+            for (TimeSlot a : newSlots) {
+                for (TimeSlot b : oldSlots) {
+                    if (TimeSlotUtil.isOverlap(a, b)) {
+                        throw new BusinessException("Trùng lịch với lớp: " + oldClassId);
                     }
                 }
-
-                // (6) check prereq
-                if (!prereqRepo.hasAllPrerequisites(studentId, classId, c)) {
-                    throw new BusinessException("Chưa đạt môn tiên quyết để đăng ký lớp này");
-                }
-
-                // (7) insert enrollment
-                String enrollmentId = UUID.randomUUID().toString();
-                boolean ok = enrollRepo.insert(enrollmentId, studentId, classId, c);
-
-                c.commit();
-                return ok;
-            } catch (Exception e) {
-                c.rollback();
-                if (e instanceof BusinessException) throw (BusinessException) e;
-                throw e;
-            } finally {
-                c.setAutoCommit(true);
             }
         }
+
+        // 6) Tiên quyết
+        var prereqIds = subjectRepo.findPrereqSubjectIds(cs.getSubject().getSubjectID());
+        for (String prereqSubId : prereqIds) {
+            boolean ok = enrollmentRepo.hasPassedSubject(studentId, prereqSubId);
+            if (!ok) throw new BusinessException("Chưa đạt môn tiên quyết: " + prereqSubId);
+        }
+
+        // 7) Ghi enrollment
+        enrollmentRepo.insertEnrollment(UUID.randomUUID().toString(), studentId, classId);
     }
 
-    public boolean drop(String studentId, String classId) throws SQLException {
-        // giữ code drop như cũ là OK
-        if (studentId == null || studentId.isBlank()) throw new BusinessException("StudentID không hợp lệ");
-        if (classId == null || classId.isBlank()) throw new BusinessException("ClassID không hợp lệ");
-
-        try (Connection c = DbConfig.getInstance().getConnection()) {
-            c.setAutoCommit(false);
-            try {
-                if (!enrollRepo.existsStudentInClass(studentId, classId, c)) {
-                    throw new BusinessException("Sinh viên chưa đăng ký lớp này");
-                }
-                boolean ok = enrollRepo.delete(studentId, classId, c);
-                c.commit();
-                return ok;
-            } catch (Exception e) {
-                c.rollback();
-                if (e instanceof BusinessException) throw (BusinessException) e;
-                throw e;
-            } finally {
-                c.setAutoCommit(true);
-            }
+    public void cancel(String studentId, String classId) throws SQLException {
+        if (!enrollmentRepo.isEnrolled(studentId, classId)) {
+            throw new BusinessException("Bạn chưa đăng ký lớp này");
         }
+        enrollmentRepo.cancelEnrollment(studentId, classId);
     }
 }

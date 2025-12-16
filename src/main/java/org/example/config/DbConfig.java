@@ -10,17 +10,23 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 public final class DbConfig {
+
     private static volatile DbConfig instance;
     private final HikariDataSource dataSource;
 
     private DbConfig() {
         Properties props = new Properties();
 
-        try (InputStream is = DbConfig.class.getClassLoader().getResourceAsStream("database.properties")) {
+        try (InputStream is = DbConfig.class
+                .getClassLoader()
+                .getResourceAsStream("database.properties")) {
+
             if (is == null) {
-                throw new IllegalStateException("Không tìm thấy database.properties trong src/main/resources");
+                throw new IllegalStateException(
+                        "Không tìm thấy database.properties trong src/main/resources");
             }
             props.load(is);
+
         } catch (IOException e) {
             throw new RuntimeException("Lỗi đọc database.properties", e);
         }
@@ -41,9 +47,14 @@ public final class DbConfig {
         this.dataSource = new HikariDataSource(cfg);
     }
 
+    // =========================
+    // Helpers đọc properties
+    // =========================
     private static String require(Properties p, String key) {
         String v = p.getProperty(key);
-        if (v == null || v.isBlank()) throw new IllegalStateException("Thiếu cấu hình: " + key);
+        if (v == null || v.isBlank()) {
+            throw new IllegalStateException("Thiếu cấu hình: " + key);
+        }
         return v.trim();
     }
 
@@ -59,20 +70,36 @@ public final class DbConfig {
         return Long.parseLong(v.trim());
     }
 
+    // =========================
+    // Singleton
+    // =========================
     public static DbConfig getInstance() {
         if (instance == null) {
             synchronized (DbConfig.class) {
-                if (instance == null) instance = new DbConfig();
+                if (instance == null) {
+                    instance = new DbConfig();
+                }
             }
         }
         return instance;
     }
 
-    public Connection getConnection() throws SQLException {
-        return dataSource.getConnection();
+    // =========================
+    // ✅ STATIC getConnection
+    // =========================
+    public static Connection getConnection() throws SQLException {
+        return getInstance().dataSource.getConnection();
     }
 
-    public void shutdown() {
-        if (dataSource != null && !dataSource.isClosed()) dataSource.close();
+    // =========================
+    // Shutdown pool (optional)
+    // =========================
+    public static void shutdown() {
+        if (instance != null &&
+                instance.dataSource != null &&
+                !instance.dataSource.isClosed()) {
+
+            instance.dataSource.close();
+        }
     }
 }
