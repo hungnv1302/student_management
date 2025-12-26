@@ -47,9 +47,6 @@ public final class DbConfig {
         this.dataSource = new HikariDataSource(cfg);
     }
 
-    // =========================
-    // Helpers đọc properties
-    // =========================
     private static String require(Properties p, String key) {
         String v = p.getProperty(key);
         if (v == null || v.isBlank()) {
@@ -70,9 +67,6 @@ public final class DbConfig {
         return Long.parseLong(v.trim());
     }
 
-    // =========================
-    // Singleton
-    // =========================
     public static DbConfig getInstance() {
         if (instance == null) {
             synchronized (DbConfig.class) {
@@ -84,16 +78,10 @@ public final class DbConfig {
         return instance;
     }
 
-    // =========================
-    // ✅ STATIC getConnection
-    // =========================
     public static Connection getConnection() throws SQLException {
         return getInstance().dataSource.getConnection();
     }
 
-    // =========================
-    // Shutdown pool (optional)
-    // =========================
     public static void shutdown() {
         if (instance != null &&
                 instance.dataSource != null &&

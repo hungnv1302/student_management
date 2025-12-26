@@ -10,18 +10,18 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import org.example.config.DbConfig;
-import org.example.controller.student.StudentDashboardController;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import org.example.repository.UserRepository;
+import org.example.service.AuthService;
+import org.example.service.SessionContext;
+import org.example.service.exception.BusinessException;
 
 public class LoginController {
 
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
     @FXML private Label errorLabel;
+
+    private final AuthService authService = new AuthService(new UserRepository());
 
     @FXML
     public void loginHandle(ActionEvent event) {
@@ -31,101 +31,34 @@ public class LoginController {
         try {
             clearError();
 
-            if (username.isEmpty() || password.isEmpty()) {
-                setError("Vui lòng nhập đầy đủ tài khoản và mật khẩu.");
+            // ✅ AuthService.login sẽ tự set SessionContext.set(username, role)
+            authService.login(username, password);
+
+            // ✅ Lấy role từ session
+            String role = SessionContext.getRole();
+            if (role == null) {
+                setError("Không lấy được role sau khi đăng nhập.");
                 return;
             }
 
-            UserRow u = findByUsername(username);
-            if (u == null) {
-                setError("Sai tài khoản hoặc mật khẩu.");
-                return;
+            switch (role.toUpperCase()) {
+                case "ADMIN" -> switchScene(event, "/app/admin/AdminScene.fxml", "Admin Dashboard");
+                case "LECTURER" -> switchScene(event, "/app/lecturer/LecturerScene.fxml", "Lecturer Dashboard");
+                case "STUDENT" -> switchScene(event, "/app/student/StudentScene.fxml", "Student Dashboard");
+                default -> setError("Role không hợp lệ: " + role);
             }
 
-            if (u.state != null && u.state.equalsIgnoreCase("LOCKED")) {
-                setError("Tài khoản bị khóa.");
-                return;
-            }
-
-            if (u.password == null || !u.password.equals(password)) {
-                setError("Sai tài khoản hoặc mật khẩu.");
-                return;
-            }
-
-            updateLastLogin(u.userId);
-
-            String role = (u.role == null) ? "" : u.role.trim().toUpperCase();
-            switch (role) {
-                case "ADMIN" -> switchScene(event, "/app/admin/AdminScene.fxml", "Admin Dashboard", u);
-                case "LECTURER" -> switchScene(event, "/app/lecturer/LecturerScene.fxml", "Lecturer Dashboard", u);
-                case "STUDENT" -> switchScene(event, "/app/student/StudentScene.fxml", "Student Dashboard", u);
-                default -> setError("Role không hợp lệ: " + u.role);
-            }
-
+        } catch (BusinessException be) {
+            setError(be.getMessage());
         } catch (Exception ex) {
             ex.printStackTrace();
             setError("Lỗi hệ thống!");
         }
     }
 
-    private UserRow findByUsername(String username) throws Exception {
-        String sql = """
-            SELECT user_id, username, password, role, state
-            FROM public.users
-            WHERE username = ?
-        """;
-
-        try (Connection c = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
-            ps.setString(1, username);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return null;
-
-                UserRow u = new UserRow();
-                u.userId = rs.getString("user_id");   // ⚠️ giả định user_id chính là MSV dạng số
-                u.username = rs.getString("username");
-                u.password = rs.getString("password");
-                u.role = rs.getString("role");
-                u.state = rs.getString("state");
-                return u;
-            }
-        }
-    }
-
-    private void updateLastLogin(String userId) {
-        String sql = "UPDATE public.users SET last_login = NOW() WHERE user_id = ?";
-        try (Connection c = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, userId);
-            ps.executeUpdate();
-        } catch (Exception ignored) {}
-    }
-
-    private static class UserRow {
-        String userId;
-        String username;
-        String password;
-        String role;
-        String state;
-    }
-
-    // ✅ SỬA Ở ĐÂY: dùng FXMLLoader để lấy controller và truyền context
-    private void switchScene(ActionEvent event, String fxmlPath, String title, UserRow u) throws Exception {
+    private void switchScene(ActionEvent event, String fxmlPath, String title) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
         Parent root = loader.load();
-
-        // ✅ Nếu là STUDENT dashboard thì truyền studentId/username
-        if ("/app/student/StudentScene.fxml".equals(fxmlPath)) {
-            StudentDashboardController dash = loader.getController();
-
-            // studentId = MSV 8 chữ số (số) -> parse từ user_id
-            Long studentId = Long.parseLong(u.userId);
-
-            dash.setContext(studentId, u.username);
-            dash.openDefaultView(); // load view mặc định sau khi đã có context
-        }
 
         Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
         stage.setTitle(title);

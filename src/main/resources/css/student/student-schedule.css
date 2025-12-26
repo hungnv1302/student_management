@@ -1,0 +1,97 @@
+.page-root {
+    -fx-padding: 14;
+    -fx-background-color: #F6F7F9;
+}
+
+.page-header { -fx-padding: 2 2 6 2; }
+.page-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: 900;
+    -fx-text-fill: #004D40;
+}
+.page-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #666;
+}
+
+.term-pill {
+    -fx-padding: 6 12 6 12;
+    -fx-background-color: #E0F2F1;
+    -fx-background-radius: 999;
+    -fx-text-fill: #004D40;
+    -fx-font-weight: 800;
+}
+
+.btn-primary {
+    -fx-background-color: #00796B;
+    -fx-text-fill: white;
+    -fx-background-radius: 10;
+    -fx-padding: 8 14 8 14;
+    -fx-font-weight: 800;
+}
+
+.timetable-grid {
+    -fx-hgap: 10;
+    -fx-vgap: 10;
+    -fx-padding: 14;
+    -fx-background-color: white;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: #E3E5E8;
+    -fx-border-width: 1;
+}
+
+.tt-header {
+    -fx-alignment: CENTER;
+    -fx-font-weight: 900;
+    -fx-text-fill: #0F5132;
+    -fx-background-color: #E8F5E9;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #DCEFE1;
+    -fx-padding: 10;
+}
+
+.tt-slot {
+    -fx-font-weight: 900;
+    -fx-text-fill: #263238;
+    -fx-background-color: #FAFAFA;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #EEE;
+    -fx-padding: 10;
+}
+
+.tt-cell {
+    -fx-padding: 10;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #E6E6E6;
+    -fx-background-color: #FFFFFF;
+}
+
+.slot-1 { -fx-background-color: #E8F5E9; }
+.slot-2 { -fx-background-color: #E3F2FD; }
+.slot-3 { -fx-background-color: #FFF3E0; }
+.slot-4 { -fx-background-color: #F3E5F5; }
+
+.tt-entry {
+    -fx-padding: 8 10 8 10;
+    -fx-background-color: rgba(255,255,255,0.92);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(0,0,0,0.08);
+    -fx-font-size: 12px;
+
+    /* quan trọng: cho nó chiếm bề ngang ô */
+    -fx-max-width: Infinity;
+}
+.tt-entry .title {
+    -fx-font-weight: 900;
+    -fx-text-fill: #1f2d2a;
+}
+.tt-entry .sub {
+    -fx-text-fill: #4b5b57;
+    -fx-font-size: 11px;
+}
+

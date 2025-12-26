@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
+import org.example.service.SessionContext;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -27,25 +28,16 @@ public class StudentDashboardController {
     private static final String INACTIVE_STYLE =
             "-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;";
 
-    // ===== Context (sinh viên đăng nhập) =====
-    private Long studentId;
-    private String username;
-
-    public void setContext(Long studentId, String username) {
-        this.studentId = studentId;
-        this.username = username;
-    }
-
     @FXML
     public void initialize() {
         sidebarButtons = Arrays.asList(profileButton, registrationButton, scheduleButton, scoresButton);
 
-        // ❌ KHÔNG load view mặc định ở đây nữa
-        // vì initialize chạy trước khi Login kịp setContext()
-        // loadView("StudentRegistrationView.fxml", registrationButton);
+        // (Optional) chặn nếu chưa login hoặc không phải student
+        if (!SessionContext.isLoggedIn() || !SessionContext.isStudent()) {
+            System.err.println("[StudentDashboard] Chưa đăng nhập hoặc không phải STUDENT!");
+        }
     }
 
-    // ✅ gọi sau khi setContext() từ LoginController
     public void openDefaultView() {
         loadView("StudentRegistrationView.fxml", registrationButton);
     }
@@ -86,11 +78,8 @@ public class StudentDashboardController {
             FXMLLoader loader = new FXMLLoader(url);
             Parent view = loader.load();
 
-            // ✅ TRUYỀN CONTEXT XUỐNG VIEW CON NẾU NÓ CẦN
-            Object childController = loader.getController();
-            if (childController instanceof StudentViewContextAware ctxAware) {
-                ctxAware.setContext(studentId, username);
-            }
+            // ✅ Không truyền context nữa.
+            // Child controller tự lấy studentId = SessionContext.getUsername()
 
             updateSidebarStyles(activeButton);
             contentArea.getChildren().setAll(view);

@@ -1,43 +1,66 @@
 package org.example.repository;
 
-import org.example.config.DbConfig;
-import org.example.domain.TimeSlot;
+import org.example.dto.LecturerExamRow;
+import org.example.dto.LecturerTimetableRow;
 
-import java.sql.*;
-import java.time.DayOfWeek;
-import java.util.ArrayList;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 public class TimeSlotRepository {
 
-    public List<TimeSlot> findByClassId(String classId) throws SQLException {
-        String sql = """
-            SELECT t.day_of_week, t.start_time, t.end_time, t.room
-            FROM time_slots t
-            JOIN class_section_timeslots cst ON t.timeslot_id = cst.timeslot_id
-            WHERE cst.class_id = ?
-        """;
-
-        List<TimeSlot> list = new ArrayList<>();
-        try (Connection c = DbConfig.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
+    // (A) Thêm ca học: SELECT qlsv.add_time_slot(?,?,?,?)
+    public void addTimeSlot(String classId, int dayOfWeek, LocalTime start, LocalTime end) throws SQLException {
+        String sql = "SELECT qlsv.add_time_slot(?, ?, ?, ?)";
+        DbFn.exec(sql, ps -> {
             ps.setString(1, classId);
-            ResultSet rs = ps.executeQuery();
+            ps.setInt(2, dayOfWeek);
+            ps.setObject(3, start); // LocalTime
+            ps.setObject(4, end);   // LocalTime
+        });
+    }
 
-            while (rs.next()) {
-                int dow = rs.getInt("day_of_week"); // giả định DB: 1=Mon..7=Sun
-                DayOfWeek day = DayOfWeek.of(dow);
+    // (B) Thời khóa biểu giảng viên
+    public List<LecturerTimetableRow> lecturerTimetable(String lecturerId, short termNo) throws SQLException {
+        String sql = "SELECT * FROM qlsv.lecturer_timetable(?, ?)";
+        return DbFn.queryList(sql,
+                ps -> {
+                    ps.setString(1, lecturerId);
+                    ps.setShort(2, termNo);
+                },
+                rs -> {
+                    LecturerTimetableRow r = new LecturerTimetableRow();
+                    r.setDayOfWeek(rs.getInt("day_of_week"));
+                    r.setStartTime(rs.getObject("start_time", LocalTime.class));
+                    r.setEndTime(rs.getObject("end_time", LocalTime.class));
+                    r.setRoom(rs.getString("room"));
+                    r.setClassId(rs.getString("class_id"));
+                    r.setSubjectId(rs.getString("subject_id"));
+                    r.setSubjectName(rs.getString("subject_name"));
+                    return r;
+                });
+    }
 
-                TimeSlot ts = new TimeSlot(
-                        day,
-                        rs.getTime("start_time").toLocalTime(),
-                        rs.getTime("end_time").toLocalTime(),
-                        rs.getString("room")
-                );
-                list.add(ts);
-            }
-        }
-        return list;
+    // (C) Lịch thi giảng viên
+    public List<LecturerExamRow> lecturerExamSchedule(String lecturerId, short termNo) throws SQLException {
+        String sql = "SELECT * FROM qlsv.lecturer_exam_schedule(?, ?)";
+        return DbFn.queryList(sql,
+                ps -> {
+                    ps.setString(1, lecturerId);
+                    ps.setShort(2, termNo);
+                },
+                rs -> {
+                    LecturerExamRow r = new LecturerExamRow();
+                    r.setExamDate(rs.getObject("exam_date", LocalDate.class));
+                    r.setStartTime(rs.getObject("start_time", LocalTime.class));
+                    r.setEndTime(rs.getObject("end_time", LocalTime.class));
+                    r.setRoom(rs.getString("room"));
+                    r.setExamType(rs.getString("exam_type"));
+                    r.setClassId(rs.getString("class_id"));
+                    r.setSubjectId(rs.getString("subject_id"));
+                    r.setSubjectName(rs.getString("subject_name"));
+                    return r;
+                });
     }
 }

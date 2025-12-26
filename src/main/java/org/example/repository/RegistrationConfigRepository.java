@@ -1,44 +1,17 @@
 package org.example.repository;
 
-import org.example.config.DbConfig;
-
-import java.sql.*;
-import java.time.LocalDateTime;
-import java.util.Optional;
+import java.sql.SQLException;
 
 public class RegistrationConfigRepository {
 
-    public record ConfigDTO(
-            String semester,
-            int year,
-            boolean isOpen,
-            int maxCredits,
-            LocalDateTime openAt,
-            LocalDateTime closeAt
-    ) {}
+    /** SELECT qlsv.get_open_term() */
+    public Short getOpenTerm() throws SQLException {
+        String sql = "SELECT qlsv.get_open_term() AS term_no";
 
-    public Optional<ConfigDTO> findBySemesterYear(String semester, int year) throws SQLException {
-        String sql = "SELECT * FROM registration_config WHERE semester = ? AND year = ?";
-        try (Connection c = DbConfig.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
-            ps.setString(1, semester);
-            ps.setInt(2, year);
-
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next()) return Optional.empty();
-
-            Timestamp openAt = rs.getTimestamp("open_at");
-            Timestamp closeAt = rs.getTimestamp("close_at");
-
-            return Optional.of(new ConfigDTO(
-                    rs.getString("semester"),
-                    rs.getInt("year"),
-                    rs.getBoolean("is_open"),
-                    rs.getInt("max_credits"),
-                    openAt == null ? null : openAt.toLocalDateTime(),
-                    closeAt == null ? null : closeAt.toLocalDateTime()
-            ));
-        }
+        // queryOne trả về 1 object; ở đây map ra Short
+        return DbFn.queryOne(sql, null, rs -> {
+            short v = rs.getShort("term_no");   // ResultSet method
+            return rs.wasNull() ? null : v;     // ResultSet method
+        });
     }
 }
