@@ -12,8 +12,8 @@ public class UserRepository {
 
     public Optional<UserDTO> findByUsername(String username) {
         String sql = """
-            SELECT user_id, username, password, role, state, person_id
-            FROM public.users
+            SELECT username, password, role, state
+            FROM qlsv.users
             WHERE username = ?
         """;
 
@@ -26,12 +26,10 @@ public class UserRepository {
                 if (!rs.next()) return Optional.empty();
 
                 return Optional.of(new UserDTO(
-                        rs.getString("user_id"),
                         rs.getString("username"),
                         rs.getString("password"),
                         rs.getString("role"),
-                        rs.getString("state"),
-                        rs.getString("person_id")
+                        rs.getString("state")
                 ));
             }
 
@@ -40,56 +38,31 @@ public class UserRepository {
         }
     }
 
+    // Vì PK là username, hàm này chỉ gọi lại findByUsername cho tương thích AuthService cũ
     public Optional<UserDTO> findByUserId(String userId) {
-        String sql = """
-            SELECT user_id, username, password, role, state, person_id
-            FROM public.users
-            WHERE user_id = ?
-        """;
-
-        try (Connection c = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
-            ps.setString(1, userId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return Optional.empty();
-
-                return Optional.of(new UserDTO(
-                        rs.getString("user_id"),
-                        rs.getString("username"),
-                        rs.getString("password"),
-                        rs.getString("role"),
-                        rs.getString("state"),
-                        rs.getString("person_id")
-                ));
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("findByUserId failed", e);
-        }
+        return findByUsername(userId);
     }
 
-    public void updateLastLogin(String userId) {
-        String sql = "UPDATE public.users SET last_login = NOW() WHERE user_id = ?";
+    public void updateLastLogin(String username) {
+        String sql = "UPDATE qlsv.users SET last_login = NOW() WHERE username = ?";
 
         try (Connection c = DbConfig.getInstance().getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
-            ps.setString(1, userId);
+            ps.setString(1, username);
             ps.executeUpdate();
 
         } catch (Exception ignored) {}
     }
 
-    public void updatePassword(String userId, String newPassword) {
-        String sql = "UPDATE public.users SET password = ? WHERE user_id = ?";
+    public void updatePassword(String username, String newPassword) {
+        String sql = "UPDATE qlsv.users SET password = ? WHERE username = ?";
 
         try (Connection c = DbConfig.getInstance().getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, newPassword);
-            ps.setString(2, userId);
+            ps.setString(2, username);
             ps.executeUpdate();
 
         } catch (Exception e) {

@@ -5,7 +5,10 @@ import org.example.domain.Student;
 import org.example.domain.enums.Gender;
 import org.example.domain.enums.StudentStatus;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -13,45 +16,49 @@ public class StudentRepository {
 
     public Optional<Student> findById(String studentId) throws SQLException {
         String sql = """
-            SELECT student_id, full_name, date_of_birth, gender, phone_number, email, address,
-                   department, major, class_name, admission_year, gpa, training_score, status
-            FROM students
-            WHERE student_id = ?
+            SELECT student_id, department, major, class_name, admission_year,
+                   training_score, status,
+                   p.full_name, p.dob, p.gender, p.phone_number, p.email, p.address
+            FROM qlsv.students s
+            JOIN qlsv.persons p ON p.person_id = s.student_id
+            WHERE s.student_id = ?
         """;
 
-        try (Connection c = DbConfig.getConnection();
+        try (Connection c = DbConfig.getInstance().getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, studentId);
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next()) return Optional.empty();
 
-            // Domain Student của cháu có constructor đầy đủ: (personID,..., studentID,...)
-            // Ở bảng students không có person_id trong ảnh, nên mình set personID = student_id (an toàn để chạy).
-            String personId = rs.getString("student_id");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return Optional.empty();
 
-            LocalDate dob = rs.getDate("date_of_birth") == null ? null : rs.getDate("date_of_birth").toLocalDate();
-            Gender gender = rs.getString("gender") == null ? null : Gender.valueOf(rs.getString("gender").toUpperCase());
-            StudentStatus status = rs.getString("status") == null ? null : StudentStatus.valueOf(rs.getString("status").toUpperCase());
+                LocalDate dob = rs.getDate("dob") == null ? null : rs.getDate("dob").toLocalDate();
+                Gender gender = rs.getString("gender") == null ? null : Gender.valueOf(rs.getString("gender").toUpperCase());
+                StudentStatus status = rs.getString("status") == null ? null : StudentStatus.valueOf(rs.getString("status").toUpperCase());
 
-            Student st = new Student(
-                    personId,
-                    rs.getString("full_name"),
-                    dob,
-                    gender,
-                    rs.getString("phone_number"),
-                    rs.getString("email"),
-                    rs.getString("address"),
-                    rs.getString("student_id"),
-                    rs.getString("department"),
-                    rs.getString("major"),
-                    rs.getString("class_name"),
-                    rs.getInt("admission_year"),
-                    rs.getDouble("gpa"),
-                    rs.getInt("training_score"),
-                    status
-            );
-            return Optional.of(st);
+                // personId == studentId (theo thiết kế)
+                String personId = rs.getString("student_id");
+
+                Student st = new Student(
+                        personId,
+                        rs.getString("full_name"),
+                        dob,
+                        gender,
+                        rs.getString("phone_number"),
+                        rs.getString("email"),
+                        rs.getString("address"),
+                        rs.getString("student_id"),
+                        rs.getString("department"),
+                        rs.getString("major"),
+                        rs.getString("class_name"),
+                        rs.getInt("admission_year"),
+                        0.0, // gpa/cpa không lưu ở students, CPA lấy từ view v_student_cpa
+                        rs.getInt("training_score"),
+                        status
+                );
+
+                return Optional.of(st);
+            }
         }
     }
 }

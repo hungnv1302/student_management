@@ -2,15 +2,18 @@ package org.example.dto;
 
 import java.time.LocalDate;
 
-public class StudentDTO {
-    private String studentID;
+public class StudentProfileDTO {
+    private String studentId;
+
+    // persons
     private String fullName;
-    private LocalDate dateOfBirth;
+    private LocalDate dob;
     private String gender;
     private String phoneNumber;
     private String email;
     private String address;
 
+    // students
     private String department;
     private String major;
     private String className;
@@ -18,17 +21,14 @@ public class StudentDTO {
     private Integer trainingScore;
     private String status;
 
-    public StudentDTO() {}
-
-    // getters/setters
-    public String getStudentID() { return studentID; }
-    public void setStudentID(String studentID) { this.studentID = studentID; }
+    public String getStudentId() { return studentId; }
+    public void setStudentId(String studentId) { this.studentId = studentId; }
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
 
-    public LocalDate getDateOfBirth() { return dateOfBirth; }
-    public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+    public LocalDate getDob() { return dob; }
+    public void setDob(LocalDate dob) { this.dob = dob; }
 
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }

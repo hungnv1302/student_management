@@ -1,102 +1,78 @@
 package org.example.service;
 
-import org.example.domain.ClassSection;
-import org.example.domain.Student;
-import org.example.domain.TimeSlot;
-import org.example.domain.enums.StudentStatus;
-import org.example.repository.*;
+import org.example.dto.TodayScheduleRow;
+import org.example.repository.RegistrationConfigRepository;
+import org.example.dto.MyEnrollmentRow;
+import org.example.dto.OpenClassRow;
+import org.example.dto.ScheduleRow;
+import org.example.repository.EnrollmentRepository;
 import org.example.service.exception.BusinessException;
-import org.example.util.TimeSlotUtil;
+import org.postgresql.util.PSQLException;
 
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 public class EnrollmentService {
+    private final EnrollmentRepository repo = new EnrollmentRepository();
 
-    private final StudentRepository studentRepo = new StudentRepository();
-    private final SubjectRepository subjectRepo = new SubjectRepository();
-    private final ClassSectionRepository classRepo = new ClassSectionRepository();
-    private final EnrollmentRepository enrollmentRepo = new EnrollmentRepository();
-    private final TimeSlotRepository timeSlotRepo = new TimeSlotRepository();
-    private final RegistrationConfigRepository configRepo = new RegistrationConfigRepository();
-
-    public void register(String studentId, String classId) throws SQLException {
-        if (studentId == null || studentId.isBlank()) throw new BusinessException("studentId trống");
-        if (classId == null || classId.isBlank()) throw new BusinessException("classId trống");
-
-        Student st = studentRepo.findById(studentId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy sinh viên"));
-
-        // ✅ Chỉ cho đăng ký khi STUDYING
-        if (st.getStatus() == null || st.getStatus() != StudentStatus.STUDYING) {
-            throw new BusinessException("Sinh viên không ở trạng thái STUDYING");
+    public void enroll(String studentId, String classId) {
+        try {
+            repo.enrollStudent(studentId, classId);
+        } catch (SQLException e) {
+            throw new BusinessException(toNiceMessage(e));
         }
-
-        ClassSection cs = classRepo.findById(classId)
-                .orElseThrow(() -> new BusinessException("Không tìm thấy lớp học phần"));
-
-        if (cs.getSubject() == null) throw new BusinessException("Lớp học phần chưa gắn môn học");
-
-        // 1) Check mở/đóng đăng ký
-        var cfg = configRepo.findBySemesterYear(cs.getSemester(), cs.getYear())
-                .orElseThrow(() -> new BusinessException("Chưa cấu hình đăng ký cho kỳ này"));
-
-        if (!cfg.isOpen()) throw new BusinessException("Hệ thống đang đóng đăng ký");
-
-        LocalDateTime now = LocalDateTime.now();
-        if (cfg.openAt() != null && now.isBefore(cfg.openAt())) throw new BusinessException("Chưa đến thời gian mở đăng ký");
-        if (cfg.closeAt() != null && now.isAfter(cfg.closeAt())) throw new BusinessException("Đã hết thời gian đăng ký");
-
-        // 2) Đã đăng ký lớp này chưa
-        if (enrollmentRepo.isEnrolled(studentId, classId)) {
-            throw new BusinessException("Bạn đã đăng ký lớp này rồi");
-        }
-
-        // 3) Capacity
-        int current = classRepo.countEnrolled(classId);
-        if (current >= cs.getCapacity()) throw new BusinessException("Lớp đã đủ số lượng");
-
-        // 4) Max credits
-        int currentCredits = enrollmentRepo.sumEnrolledCreditsInTerm(studentId, cs.getSemester(), cs.getYear());
-        int newCredits = cs.getSubject().getCredit();
-
-        if (currentCredits + newCredits > cfg.maxCredits()) {
-            throw new BusinessException("Vượt quá số tín chỉ tối đa (" + cfg.maxCredits() + ")");
-        }
-
-        // 5) Trùng lịch (chỉ trong kỳ)
-        List<String> enrolledClassIds = enrollmentRepo.findEnrolledClassIdsInTerm(studentId, cs.getSemester(), cs.getYear());
-        List<TimeSlot> newSlots = timeSlotRepo.findByClassId(classId);
-
-        for (String oldClassId : enrolledClassIds) {
-            List<TimeSlot> oldSlots = timeSlotRepo.findByClassId(oldClassId);
-
-            for (TimeSlot a : newSlots) {
-                for (TimeSlot b : oldSlots) {
-                    if (TimeSlotUtil.isOverlap(a, b)) {
-                        throw new BusinessException("Trùng lịch với lớp: " + oldClassId);
-                    }
-                }
-            }
-        }
-
-        // 6) Tiên quyết
-        var prereqIds = subjectRepo.findPrereqSubjectIds(cs.getSubject().getSubjectID());
-        for (String prereqSubId : prereqIds) {
-            boolean ok = enrollmentRepo.hasPassedSubject(studentId, prereqSubId);
-            if (!ok) throw new BusinessException("Chưa đạt môn tiên quyết: " + prereqSubId);
-        }
-
-        // 7) Ghi enrollment
-        enrollmentRepo.insertEnrollment(UUID.randomUUID().toString(), studentId, classId);
     }
 
-    public void cancel(String studentId, String classId) throws SQLException {
-        if (!enrollmentRepo.isEnrolled(studentId, classId)) {
-            throw new BusinessException("Bạn chưa đăng ký lớp này");
+    public void drop(String studentId, String classId) {
+        try {
+            repo.dropEnrollment(studentId, classId);
+        } catch (SQLException e) {
+            throw new BusinessException(toNiceMessage(e));
         }
-        enrollmentRepo.cancelEnrollment(studentId, classId);
+    }
+
+    public List<OpenClassRow> listAvailable(String studentId) {
+        try {
+            return repo.listAvailableSections(studentId);
+        } catch (SQLException e) {
+            throw new BusinessException(toNiceMessage(e));
+        }
+    }
+
+    public List<MyEnrollmentRow> listMine(String studentId) {
+        try {
+            return repo.listMyEnrollments(studentId);
+        } catch (SQLException e) {
+            throw new BusinessException(toNiceMessage(e));
+        }
+    }
+
+    public List<ScheduleRow> schedule(String studentId, short termNo) {
+        try {
+            return repo.getStudentSchedule(studentId, termNo);
+        } catch (SQLException e) {
+            throw new BusinessException(toNiceMessage(e));
+        }
+    }
+
+    private String toNiceMessage(SQLException e) {
+        // message từ RAISE EXCEPTION thường nằm ở ServerErrorMessage
+        if (e instanceof PSQLException pe && pe.getServerErrorMessage() != null) {
+            String m = pe.getServerErrorMessage().getMessage();
+            if (m != null && !m.isBlank()) return m;
+        }
+        // unique violation (vd insert enroll trùng) -> báo thân thiện
+        if ("23505".equals(e.getSQLState())) return "Bạn đã đăng ký lớp này rồi.";
+        return "Lỗi hệ thống: " + e.getMessage();
+    }
+
+    public java.util.List<TodayScheduleRow> scheduleToday(String studentId) {
+        try {
+            Short openTerm = new RegistrationConfigRepository().getOpenTerm();
+            if (openTerm == null) return java.util.List.of(); // chưa mở kỳ nào
+            return repo.getStudentScheduleToday(studentId, openTerm);
+        } catch (java.sql.SQLException e) {
+            throw new BusinessException(toNiceMessage(e));
+        }
     }
 }

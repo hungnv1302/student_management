@@ -10,7 +10,6 @@ public class Main extends Application {
     public void start(Stage primaryStage) {
         // Khởi tạo Stage cho SceneNavigator
         SceneNavigator.init(primaryStage);
-
         // Mở màn hình login
         SceneNavigator.goTo(
                 "/app/auth/LoginScene.fxml",

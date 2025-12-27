@@ -6,11 +6,12 @@ import java.util.List;
 import java.util.Objects;
 
 public class ClassSection {
-    private String classID;
-    private String semester;
-    private int year;
-    private int capacity;
-    private String room;
+    private String classID;     // sections.class_id (varchar(6))
+    private short termNo;       // sections.term_no (smallint)
+    private int capacity;       // sections.capacity
+    private String status;      // sections.status (OPEN/CLOSED/LOCKED/CANCELED)
+    private String room;        // sections.room
+    private String note;        // sections.note
 
     private Schedule schedule;
     private Subject subject;
@@ -20,13 +21,14 @@ public class ClassSection {
 
     public ClassSection() {}
 
-    public ClassSection(String classID, String semester, int year, int capacity, String room,
+    public ClassSection(String classID, short termNo, int capacity, String status, String room, String note,
                         Schedule schedule, Subject subject, Lecturer lecturer) {
         this.classID = classID;
-        this.semester = semester;
-        this.year = year;
+        this.termNo = termNo;
         this.capacity = capacity;
+        this.status = status;
         this.room = room;
+        this.note = note;
         this.schedule = schedule;
         this.subject = subject;
         this.lecturer = lecturer;
@@ -35,17 +37,20 @@ public class ClassSection {
     public String getClassID() { return classID; }
     public void setClassID(String classID) { this.classID = classID; }
 
-    public String getSemester() { return semester; }
-    public void setSemester(String semester) { this.semester = semester; }
-
-    public int getYear() { return year; }
-    public void setYear(int year) { this.year = year; }
+    public short getTermNo() { return termNo; }
+    public void setTermNo(short termNo) { this.termNo = termNo; }
 
     public int getCapacity() { return capacity; }
     public void setCapacity(int capacity) { this.capacity = capacity; }
 
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
     public String getRoom() { return room; }
     public void setRoom(String room) { this.room = room; }
+
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
 
     public Schedule getSchedule() { return schedule; }
     public void setSchedule(Schedule schedule) { this.schedule = schedule; }
@@ -68,6 +73,7 @@ public class ClassSection {
         enrollments.remove(enrollment);
     }
 
+    /** Lưu ý: enrollments list thường không load đủ khi dùng DB functions */
     public boolean isFull() {
         return capacity > 0 && enrollments.size() >= capacity;
     }

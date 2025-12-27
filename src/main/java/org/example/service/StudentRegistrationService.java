@@ -1,329 +1,128 @@
 package org.example.service;
 
-import org.example.config.DbConfig; // nếu package khác thì đổi
-import org.example.dto.EnrolledRow;
-import org.example.dto.OpenClassRow;
+import org.example.dto.*;
+import org.example.repository.EnrollmentRepository;
+import org.example.repository.RegistrationConfigRepository;
+import org.example.service.exception.BusinessException;
+import org.postgresql.util.PSQLException;
 
-import java.sql.*;
-import java.time.LocalTime;
-import java.util.*;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Objects;
 
 public class StudentRegistrationService {
 
-    // ====== PUBLIC API ======
+    private final EnrollmentRepository enrollmentRepo = new EnrollmentRepository();
+    private final RegistrationConfigRepository regRepo = new RegistrationConfigRepository();
 
-    /** Lớp mở đăng ký (theo registration_config đang is_open=true) */
-    public List<OpenClassRow> getOpenClasses(Long studentId) {
+    /** Danh sách lớp còn chỗ & đang OPEN ở kỳ đang mở đăng ký (DB tự lọc) */
+    public List<OpenClassRow> getOpenClasses(String studentId) {
         Objects.requireNonNull(studentId, "studentId is null");
-
-        String sql =
-                "SELECT cs.class_id, cs.subject_id, s.subject_name, s.credit, " +
-                        "       p.full_name AS lecturer_name " +
-                        "FROM class_sections cs " +
-                        "JOIN subjects s ON s.subject_id = cs.subject_id " +
-                        "JOIN lecturers l ON l.lecturer_id = cs.lecturer_id " +
-                        "JOIN persons p ON p.person_id = l.person_id " +
-                        "JOIN registration_config rc ON rc.semester = cs.semester AND rc.year = cs.year " +
-                        "WHERE rc.is_open = TRUE " +
-                        "  AND NOW() BETWEEN rc.open_at AND rc.close_at " +
-                        // không show lớp đã đăng ký rồi
-                        "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
-                        "                  WHERE e.student_id = ? AND e.class_id = cs.class_id AND e.status = 'ENROLLED') " +
-                        "ORDER BY cs.class_id";
-
-        List<OpenClassRow> list = new ArrayList<>();
-        try (Connection conn = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setLong(1, studentId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    long classId = rs.getLong("class_id");
-                    long subjectId = rs.getLong("subject_id");
-                    String subjectName = rs.getString("subject_name");
-                    int credit = rs.getInt("credit");
-                    String lecturerName = rs.getString("lecturer_name");
-
-                    // “Mã môn” cháu chưa có cột riêng, nên tạm dùng format SUB + subjectId
-                    String subjectCode = "SUB" + subjectId;
-
-                    list.add(new OpenClassRow(classId, subjectCode, subjectName, credit, lecturerName));
-                }
-            }
-            return list;
-
+        try {
+            return enrollmentRepo.listAvailableSections(studentId);
         } catch (SQLException e) {
-            throw new RuntimeException("DB error getOpenClasses: " + e.getMessage(), e);
+            throw new BusinessException(toNiceMessage(e));
         }
     }
 
-    /** Lớp đã đăng ký của sinh viên */
-    public List<EnrolledRow> getEnrolledClasses(Long studentId) {
+    /**
+     * Search: vì function hiện tại chưa có tham số keyword,
+     * nên search trên Java từ danh sách lớp mở (nhẹ, an toàn).
+     */
+    public List<OpenClassRow> searchOpenClasses(String studentId, String keyword) {
         Objects.requireNonNull(studentId, "studentId is null");
+        String k = keyword == null ? "" : keyword.trim().toLowerCase();
 
-        // Lấy enroll + subject + timeslots
-        String sql =
-                "SELECT e.class_id, e.status, s.subject_name, " +
-                        "       ts.day_of_week, ts.start_time, ts.end_time " +
-                        "FROM enrollments e " +
-                        "JOIN class_sections cs ON cs.class_id = e.class_id " +
-                        "JOIN subjects s ON s.subject_id = cs.subject_id " +
-                        "LEFT JOIN class_section_timeslots cst ON cst.class_id = cs.class_id " +
-                        "LEFT JOIN time_slots ts ON ts.timeslot_id = cst.timeslot_id " +
-                        "WHERE e.student_id = ? AND e.status = 'ENROLLED' " +
-                        "ORDER BY e.class_id, ts.day_of_week, ts.start_time";
+        List<OpenClassRow> all = getOpenClasses(studentId);
+        if (k.isBlank()) return all;
 
-        // Gom nhiều timeslot về 1 dòng theo class_id
-        Map<Long, EnrolledAgg> map = new LinkedHashMap<>();
+        return all.stream().filter(r ->
+                safe(r.getClassId()).contains(k) ||
+                        safe(r.getSubjectId()).contains(k) ||
+                        safe(r.getSubjectName()).contains(k) ||
+                        String.valueOf(r.getCredit()).contains(k)
+        ).toList();
+    }
 
-        try (Connection conn = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+    /** Lớp cháu đã đăng ký trong kỳ đang mở (DB tự join subjects/sections) */
+    public List<EnrolledRow> getEnrolledClasses(String studentId) {
+        try {
+            List<MyEnrollmentRow> rows = enrollmentRepo.listMyEnrollments(studentId);
 
-            ps.setLong(1, studentId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    long classId = rs.getLong("class_id");
-                    String status = rs.getString("status");
-                    String subjectName = rs.getString("subject_name");
-
-                    Integer day = (Integer) rs.getObject("day_of_week"); // có thể null
-                    LocalTime start = (LocalTime) rs.getObject("start_time");
-                    LocalTime end = (LocalTime) rs.getObject("end_time");
-
-                    map.putIfAbsent(classId, new EnrolledAgg(classId, subjectName, status));
-
-                    if (day != null && start != null && end != null) {
-                        map.get(classId).addSlot(day, start, end);
-                    }
-                }
-            }
-
-            List<EnrolledRow> out = new ArrayList<>();
-            for (EnrolledAgg agg : map.values()) {
-                String classCode = "LHP" + agg.classId; // tạm format
-                out.add(new EnrolledRow(agg.classId, classCode, agg.subjectName, agg.buildTimeText(), agg.status));
-            }
-            return out;
+            // timeText: nếu muốn hiển thị lịch, ta sẽ gọi get_student_schedule() để build timeText.
+            // Tạm thời cho "" để build chạy trước.
+            return rows.stream()
+                    .map(r -> new EnrolledRow(r.getClassId(), r.getSubjectName(), "", r.getStatus()))
+                    .toList();
 
         } catch (SQLException e) {
-            throw new RuntimeException("DB error getEnrolledClasses: " + e.getMessage(), e);
+            throw new BusinessException(toNiceMessage(e));
         }
     }
 
-    /** Đăng ký lớp: check mở đăng ký + check đã đăng ký + check capacity + check trùng lịch */
-    public void register(Long studentId, Long classId) {
+    /** Đăng ký lớp: DB tự check mở đăng ký, full, trùng lịch, 24 tín... */
+    public void register(String studentId, String classId) {
         Objects.requireNonNull(studentId, "studentId is null");
         Objects.requireNonNull(classId, "classId is null");
-
-        try (Connection conn = DbConfig.getInstance().getConnection()) {
-            conn.setAutoCommit(false);
-
-            // 1) check kỳ mở đăng ký
-            if (!isRegistrationOpenForClass(conn, classId)) {
-                throw new RuntimeException("Hiện tại chưa mở đăng ký cho lớp này.");
-            }
-
-            // 2) đã đăng ký?
-            if (existsEnrollment(conn, studentId, classId)) {
-                throw new RuntimeException("Bạn đã đăng ký lớp này rồi.");
-            }
-
-            // 3) capacity
-            int capacity = getClassCapacity(conn, classId);
-            int enrolledCount = countEnrolled(conn, classId);
-            if (enrolledCount >= capacity) {
-                throw new RuntimeException("Lớp đã đủ sĩ số.");
-            }
-
-            // 4) trùng lịch
-            if (hasScheduleConflict(conn, studentId, classId)) {
-                throw new RuntimeException("Trùng lịch học với lớp đã đăng ký.");
-            }
-
-            // 5) insert enrollment
-            insertEnrollment(conn, studentId, classId);
-
-            conn.commit();
+        try {
+            enrollmentRepo.enrollStudent(studentId, classId);
         } catch (SQLException e) {
-            throw new RuntimeException("DB error register: " + e.getMessage(), e);
+            throw new BusinessException(toNiceMessage(e));
         }
     }
 
-    /** Hủy đăng ký: update status */
-    public void drop(Long studentId, Long classId) {
+    /** Hủy đăng ký: DB tự check còn mở đăng ký + chưa finalized */
+    public void drop(String studentId, String classId) {
         Objects.requireNonNull(studentId, "studentId is null");
         Objects.requireNonNull(classId, "classId is null");
-
-        String sql = "UPDATE enrollments SET status = 'DROPPED' WHERE student_id = ? AND class_id = ? AND status = 'ENROLLED'";
-        try (Connection conn = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setLong(1, studentId);
-            ps.setLong(2, classId);
-            int updated = ps.executeUpdate();
-            if (updated == 0) {
-                throw new RuntimeException("Không tìm thấy đăng ký đang hoạt động để hủy.");
-            }
+        try {
+            enrollmentRepo.dropEnrollment(studentId, classId);
         } catch (SQLException e) {
-            throw new RuntimeException("DB error drop: " + e.getMessage(), e);
+            throw new BusinessException(toNiceMessage(e));
         }
     }
 
-    // ====== PRIVATE HELPERS ======
-
-    private boolean isRegistrationOpenForClass(Connection conn, Long classId) throws SQLException {
-        String sql =
-                "SELECT 1 " +
-                        "FROM class_sections cs " +
-                        "JOIN registration_config rc ON rc.semester = cs.semester AND rc.year = cs.year " +
-                        "WHERE cs.class_id = ? AND rc.is_open = TRUE AND NOW() BETWEEN rc.open_at AND rc.close_at " +
-                        "LIMIT 1";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, classId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        }
-    }
-
-    private boolean existsEnrollment(Connection conn, Long studentId, Long classId) throws SQLException {
-        String sql = "SELECT 1 FROM enrollments WHERE student_id = ? AND class_id = ? AND status = 'ENROLLED' LIMIT 1";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, studentId);
-            ps.setLong(2, classId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        }
-    }
-
-    private int getClassCapacity(Connection conn, Long classId) throws SQLException {
-        String sql = "SELECT capacity FROM class_sections WHERE class_id = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, classId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) throw new RuntimeException("Không tồn tại lớp học phần.");
-                return rs.getInt("capacity");
-            }
-        }
-    }
-
-    private int countEnrolled(Connection conn, Long classId) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM enrollments WHERE class_id = ? AND status = 'ENROLLED'";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, classId);
-            try (ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                return rs.getInt(1);
-            }
-        }
-    }
-
-    /** Check overlap: cùng day_of_week và start < other_end && end > other_start */
-    private boolean hasScheduleConflict(Connection conn, Long studentId, Long newClassId) throws SQLException {
-        String sql =
-                "SELECT 1 " +
-                        "FROM enrollments e " +
-                        "JOIN class_section_timeslots cst ON cst.class_id = e.class_id " +
-                        "JOIN time_slots ts ON ts.timeslot_id = cst.timeslot_id " +
-                        "JOIN class_section_timeslots cst2 ON cst2.class_id = ? " +
-                        "JOIN time_slots ts2 ON ts2.timeslot_id = cst2.timeslot_id " +
-                        "WHERE e.student_id = ? AND e.status = 'ENROLLED' " +
-                        "  AND ts.day_of_week = ts2.day_of_week " +
-                        "  AND ts.start_time < ts2.end_time " +
-                        "  AND ts.end_time > ts2.start_time " +
-                        "LIMIT 1";
-
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, newClassId);
-            ps.setLong(2, studentId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        }
-    }
-
-    private void insertEnrollment(Connection conn, Long studentId, Long classId) throws SQLException {
-        // enrollment_id nếu là SERIAL thì không cần set
-        String sql = "INSERT INTO enrollments (student_id, class_id, status, created_at) VALUES (?, ?, 'ENROLLED', NOW())";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, studentId);
-            ps.setLong(2, classId);
-            ps.executeUpdate();
-        }
-    }
-
-    // helper class gộp timeslots
-    private static class EnrolledAgg {
-        final long classId;
-        final String subjectName;
-        final String status;
-        final List<String> slots = new ArrayList<>();
-
-        EnrolledAgg(long classId, String subjectName, String status) {
-            this.classId = classId;
-            this.subjectName = subjectName;
-            this.status = status;
-        }
-
-        void addSlot(int day, LocalTime start, LocalTime end) {
-            slots.add("T" + day + " " + start + "-" + end);
-        }
-
-        String buildTimeText() {
-            if (slots.isEmpty()) return "";
-            return String.join(", ", slots);
-        }
-    }
-
-    public List<OpenClassRow> searchOpenClasses(Long studentId, String keyword) {
+    /** Thời khóa biểu theo term */
+    public List<ScheduleRow> getSchedule(String studentId, short termNo) {
         Objects.requireNonNull(studentId, "studentId is null");
-        String k = (keyword == null) ? "" : keyword.trim().toLowerCase();
-
-        String sql =
-                "SELECT cs.class_id, cs.subject_id, s.subject_name, s.credit, " +
-                        "       p.full_name AS lecturer_name " +
-                        "FROM class_sections cs " +
-                        "JOIN subjects s ON s.subject_id = cs.subject_id " +
-                        "JOIN lecturers l ON l.lecturer_id = cs.lecturer_id " +
-                        "JOIN persons p ON p.person_id = l.person_id " +
-                        "JOIN registration_config rc ON rc.semester = cs.semester AND rc.year = cs.year " +
-                        "WHERE rc.is_open = TRUE " +
-                        "  AND NOW() BETWEEN rc.open_at AND rc.close_at " +
-                        "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
-                        "                  WHERE e.student_id = ? AND e.class_id = cs.class_id AND e.status = 'ENROLLED') " +
-                        "  AND (LOWER(s.subject_name) LIKE ? OR CAST(s.subject_id AS TEXT) LIKE ?) " +
-                        "ORDER BY cs.class_id";
-
-        List<OpenClassRow> list = new java.util.ArrayList<>();
-        try (Connection conn = DbConfig.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setLong(1, studentId);
-            ps.setString(2, "%" + k + "%");  // tìm theo tên môn
-            ps.setString(3, "%" + k + "%");  // tìm theo subject_id dạng text (vì cháu đang dùng SUB+id)
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    long classId = rs.getLong("class_id");
-                    long subjectId = rs.getLong("subject_id");
-                    String subjectName = rs.getString("subject_name");
-                    int credit = rs.getInt("credit");
-                    String lecturerName = rs.getString("lecturer_name");
-
-                    String subjectCode = "SUB" + subjectId;
-                    list.add(new OpenClassRow(classId, subjectCode, subjectName, credit, lecturerName));
-                }
-            }
-            return list;
-
+        try {
+            return enrollmentRepo.getStudentSchedule(studentId, termNo);
         } catch (SQLException e) {
-            throw new RuntimeException("DB error searchOpenClasses: " + e.getMessage(), e);
+            throw new BusinessException(toNiceMessage(e));
         }
     }
 
+    /** Lịch hôm nay: tự lấy open term (get_open_term) */
+    public List<TodayScheduleRow> getScheduleToday(String studentId) {
+        Objects.requireNonNull(studentId, "studentId is null");
+        try {
+            Short openTerm = regRepo.getOpenTerm();
+            if (openTerm == null) return List.of();
+            return enrollmentRepo.getStudentScheduleToday(studentId, openTerm);
+        } catch (SQLException e) {
+            throw new BusinessException(toNiceMessage(e));
+        }
+    }
 
+    private String safe(String s) {
+        return s == null ? "" : s.toLowerCase();
+    }
+
+    private String toNiceMessage(SQLException e) {
+        if (e instanceof PSQLException pe && pe.getServerErrorMessage() != null) {
+            String m = pe.getServerErrorMessage().getMessage();
+            if (m != null && !m.isBlank()) return m;
+        }
+        if ("23505".equals(e.getSQLState())) return "Bạn đã đăng ký lớp này rồi.";
+        return "Lỗi hệ thống: " + e.getMessage();
+    }
+
+    public int getCurrentCredits(String studentId) {
+        try {
+            return enrollmentRepo.getCurrentCredits(studentId);
+        } catch (SQLException e) {
+            throw new RuntimeException("DB error getCurrentCredits: " + e.getMessage(), e);
+        }
+    }
 
 }

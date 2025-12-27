@@ -23,7 +23,6 @@ public class StudentMapper {
         s.setMajor(dto.getMajor());
         s.setClassName(dto.getClassName());
         s.setAdmissionYear(dto.getAdmissionYear());
-        s.setGpa(dto.getGpa() == null ? 0 : dto.getGpa());
         s.setTrainingScore(dto.getTrainingScore() == null ? 0 : dto.getTrainingScore());
 
         // ===== ENUM mapping =====
@@ -54,7 +53,6 @@ public class StudentMapper {
         dto.setMajor(s.getMajor());
         dto.setClassName(s.getClassName());
         dto.setAdmissionYear(s.getAdmissionYear());
-        dto.setGpa(s.getGpa());
         dto.setTrainingScore(s.getTrainingScore());
 
         // ===== ENUM -> String (cho UI dễ dùng) =====

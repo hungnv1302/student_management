@@ -1,14 +1,12 @@
 package org.example.dto;
 
-public class OpenClassRow {
+public class MyEnrollmentRow {
     private String classId;
     private String subjectId;
     private String subjectName;
     private int credit;
-    private int capacity;
-    private long enrolledCount;
-    private String status;
     private short termNo;
+    private String status;
 
     public String getClassId() { return classId; }
     public void setClassId(String classId) { this.classId = classId; }
@@ -18,18 +16,8 @@ public class OpenClassRow {
     public void setSubjectName(String subjectName) { this.subjectName = subjectName; }
     public int getCredit() { return credit; }
     public void setCredit(int credit) { this.credit = credit; }
-    public int getCapacity() { return capacity; }
-    public void setCapacity(int capacity) { this.capacity = capacity; }
-    public long getEnrolledCount() { return enrolledCount; }
-    public void setEnrolledCount(long enrolledCount) { this.enrolledCount = enrolledCount; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
     public short getTermNo() { return termNo; }
     public void setTermNo(short termNo) { this.termNo = termNo; }
-    public String getClassCode() { return "LHP" + classId; }
-    public String getSubjectCode() { return "SUB" + subjectId; }
-    public int getCredits() { return credit; }
-
-    public String getLecturerName() { return ""; }
-
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }
