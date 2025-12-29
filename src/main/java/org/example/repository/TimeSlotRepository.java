@@ -10,24 +10,24 @@ import java.util.List;
 
 public class TimeSlotRepository {
 
-    // (A) Thêm ca học: SELECT qlsv.add_time_slot(?,?,?,?)
     public void addTimeSlot(String classId, int dayOfWeek, LocalTime start, LocalTime end) throws SQLException {
         String sql = "SELECT qlsv.add_time_slot(?, ?, ?, ?)";
         DbFn.exec(sql, ps -> {
             ps.setString(1, classId);
             ps.setInt(2, dayOfWeek);
-            ps.setObject(3, start); // LocalTime
-            ps.setObject(4, end);   // LocalTime
+            ps.setObject(3, start);
+            ps.setObject(4, end);
         });
     }
 
-    // (B) Thời khóa biểu giảng viên
-    public List<LecturerTimetableRow> lecturerTimetable(String lecturerId, short termNo) throws SQLException {
-        String sql = "SELECT * FROM qlsv.lecturer_timetable(?, ?)";
+    // ✅ Lịch dạy (schedule) giảng viên theo kỳ (year/sem) - dùng đúng function DB hiện có
+    public List<LecturerTimetableRow> lecturerSchedule(String lecturerId, int termYear, short termSem) throws SQLException {
+        String sql = "SELECT * FROM qlsv.get_lecturer_schedule(?, ?, ?::smallint)";
         return DbFn.queryList(sql,
                 ps -> {
                     ps.setString(1, lecturerId);
-                    ps.setShort(2, termNo);
+                    ps.setInt(2, termYear);
+                    ps.setShort(3, termSem);
                 },
                 rs -> {
                     LecturerTimetableRow r = new LecturerTimetableRow();
@@ -36,19 +36,22 @@ public class TimeSlotRepository {
                     r.setEndTime(rs.getObject("end_time", LocalTime.class));
                     r.setRoom(rs.getString("room"));
                     r.setClassId(rs.getString("class_id"));
-                    r.setSubjectId(rs.getString("subject_id"));
                     r.setSubjectName(rs.getString("subject_name"));
+
+                    // DB function không trả subject_id -> để null (hoặc bỏ field subjectId)
+                    r.setSubjectId(null);
                     return r;
                 });
     }
 
-    // (C) Lịch thi giảng viên
-    public List<LecturerExamRow> lecturerExamSchedule(String lecturerId, short termNo) throws SQLException {
-        String sql = "SELECT * FROM qlsv.lecturer_exam_schedule(?, ?)";
+    // ✅ Lịch thi giảng viên theo kỳ (year/sem)
+    public List<LecturerExamRow> lecturerExamSchedule(String lecturerId, int termYear, short termSem) throws SQLException {
+        String sql = "SELECT * FROM qlsv.lecturer_exam_schedule(?, ?, ?::smallint)";
         return DbFn.queryList(sql,
                 ps -> {
                     ps.setString(1, lecturerId);
-                    ps.setShort(2, termNo);
+                    ps.setInt(2, termYear);
+                    ps.setShort(3, termSem);
                 },
                 rs -> {
                     LecturerExamRow r = new LecturerExamRow();

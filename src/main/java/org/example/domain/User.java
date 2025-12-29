@@ -9,7 +9,7 @@ import java.util.Objects;
 public class User {
     private String userID;
     private String username;
-    private String password; // (sau này Service sẽ hash)
+    private String password;
     private RoleType role;
     private LocalDateTime lastLogin;
     private UserState state;

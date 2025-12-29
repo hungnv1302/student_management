@@ -15,11 +15,12 @@ import org.example.service.StudentRegistrationService;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class StudentRegistrationController {
 
-    // ===== Search =====
     @FXML private TextField searchField;
     @FXML private Button searchButton;
 
@@ -30,17 +31,22 @@ public class StudentRegistrationController {
     @FXML private TableColumn<OpenClassRow, String>  colOpenClassCode;
     @FXML private TableColumn<OpenClassRow, Integer> colOpenCredits;
     @FXML private TableColumn<OpenClassRow, String>  colOpenLecturer;
+
+    // ✅ NEW columns
+    @FXML private TableColumn<OpenClassRow, String>  colOpenDay;
+    @FXML private TableColumn<OpenClassRow, String>  colOpenSlot;
+    @FXML private TableColumn<OpenClassRow, String>  colOpenRoom;
+
     @FXML private TableColumn<OpenClassRow, Void>    colOpenAction;
 
     // ===== Table 2: enrolled =====
     @FXML private TableView<EnrolledRow> enrolledTable;
-    @FXML private TableColumn<EnrolledRow, Boolean> colEnrolledSelect; // ✅ mới
+    @FXML private TableColumn<EnrolledRow, Boolean> colEnrolledSelect;
     @FXML private TableColumn<EnrolledRow, String> colEnrolledClassCode;
     @FXML private TableColumn<EnrolledRow, String> colEnrolledSubject;
     @FXML private TableColumn<EnrolledRow, String> colEnrolledTime;
     @FXML private TableColumn<EnrolledRow, String> colEnrolledStatus;
 
-    // ===== Bottom UI =====
     @FXML private Label totalCreditsLabel;
     @FXML private Button cancelRegistrationButton;
 
@@ -49,9 +55,13 @@ public class StudentRegistrationController {
 
     private final StudentRegistrationService service = new StudentRegistrationService();
 
+    private static final Pattern P_TIME = Pattern.compile("(\\d{1,2}:\\d{2})\\s*-\\s*(\\d{1,2}:\\d{2})");
+    private static final Pattern P_ROOM = Pattern.compile("\\|\\s*([A-Za-z0-9_-]+)");
+
     private String getStudentIdOrThrow() {
         String u = SessionContext.getUsername();
-        if (u == null || u.isBlank()) throw new IllegalStateException("Chưa đăng nhập (SessionContext.username null).");
+        if (u == null || u.isBlank())
+            throw new IllegalStateException("Chưa đăng nhập (SessionContext.username null).");
         return u.trim();
     }
 
@@ -91,13 +101,20 @@ public class StudentRegistrationController {
     private void onRegisterClicked(OpenClassRow row) {
         if (row == null) return;
 
+        // ✅ chỉ cho đăng ký khi eligibility = ELIGIBLE
+        if (!"eligible".equalsIgnoreCase(sl(row.getEligibility()))) {
+            String reason = s(row.getReason());
+            info("Không thể đăng ký",
+                    reason.isBlank() ? "Lớp này không đủ điều kiện đăng ký." : reason);
+            return;
+        }
+
         try {
             String studentId = getStudentIdOrThrow();
             service.register(studentId, row.getClassId());
 
-            // reload để bảng dưới + tổng tín chỉ cập nhật đúng
             reload();
-            info("Thành công", "Đã đăng ký lớp: " + safe(row.getSubjectName()));
+            info("Thành công", "Đã đăng ký lớp: " + s(row.getSubjectName()));
 
         } catch (RuntimeException ex) {
             error("Không thể đăng ký", ex.getMessage());
@@ -106,7 +123,6 @@ public class StudentRegistrationController {
         }
     }
 
-    /** ✅ Hủy nhiều môn theo checkbox + xác nhận */
     @FXML
     private void cancelRegistrationHandle() {
         List<EnrolledRow> selected = enrolledData.stream()
@@ -114,7 +130,7 @@ public class StudentRegistrationController {
                 .toList();
 
         if (selected.isEmpty()) {
-            info("Chưa chọn lớp", "Cháu hãy tích chọn ít nhất 1 lớp để hủy.");
+            info("Chưa chọn lớp", "Hãy tích chọn ít nhất 1 lớp để hủy.");
             return;
         }
 
@@ -156,37 +172,41 @@ public class StudentRegistrationController {
         List<OpenClassRow> open = service.getOpenClasses(studentId);
         List<EnrolledRow> enrolled = service.getEnrolledClasses(studentId);
 
-        enrolled.forEach(r -> r.setSelected(false)); // giữ checkbox nếu có
+        enrolled.forEach(r -> r.setSelected(false));
 
         openData.setAll(open);
         enrolledData.setAll(enrolled);
 
-        int total = service.getCurrentCredits(studentId);
+        int total = service.getOpenCredits(studentId);
         totalCreditsLabel.setText("Tổng số tín chỉ: " + total + "/24");
     }
 
-
     private void bindTables() {
         // Open classes
-        colOpenClassCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getClassCode()));
-        colOpenSubjectCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectCode()));
-        colOpenSubjectName.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectName()));
-        colOpenCredits.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCredits()));
-        colOpenLecturer.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getLecturerName()));
+        colOpenClassCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getClassId())));
+        colOpenSubjectCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getSubjectId())));
+        colOpenSubjectName.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getSubjectName())));
+        colOpenCredits.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getCredit()));
+        colOpenLecturer.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getLecturerName())));
+
+        // ✅ NEW: parse từ scheduleText (ví dụ "T3 12:30-14:55 @A103")
+        colOpenDay.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(extractDay(c.getValue().getScheduleText())));
+        colOpenSlot.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(extractSlot(c.getValue().getScheduleText())));
+        colOpenRoom.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(extractRoom(c.getValue().getScheduleText())));
+
         colOpenAction.setCellFactory(makeRegisterButtonCell());
 
-        // ✅ Enrolled checkbox column
+        // Enrolled checkbox column
         colEnrolledSelect.setCellValueFactory(cell -> cell.getValue().selectedProperty());
         colEnrolledSelect.setCellFactory(CheckBoxTableCell.forTableColumn(colEnrolledSelect));
         colEnrolledSelect.setEditable(true);
 
         enrolledTable.setEditable(true);
 
-        // Enrolled other columns
-        colEnrolledClassCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getClassCode()));
-        colEnrolledSubject.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getSubjectName()));
-        colEnrolledTime.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getTimeText()));
-        colEnrolledStatus.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getStatus()));
+        colEnrolledClassCode.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getClassCode())));
+        colEnrolledSubject.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getSubjectName())));
+        colEnrolledTime.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getTimeText())));
+        colEnrolledStatus.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(s(c.getValue().getStatus())));
     }
 
     private Callback<TableColumn<OpenClassRow, Void>, TableCell<OpenClassRow, Void>> makeRegisterButtonCell() {
@@ -199,14 +219,59 @@ public class StudentRegistrationController {
                     onRegisterClicked(row);
                 });
             }
-            @Override protected void updateItem(Void item, boolean empty) {
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
+                if (empty) {
+                    setGraphic(null);
+                    return;
+                }
+
+                OpenClassRow row = getTableView().getItems().get(getIndex());
+                boolean ok = "eligible".equalsIgnoreCase(sl(row.getEligibility()));
+                btn.setDisable(!ok);
+                setGraphic(btn);
             }
         };
     }
 
-    private String safe(String s) { return (s == null) ? "" : s; }
+    // ===== Helpers: schedule parsing =====
+    // Nếu scheduleText có nhiều dòng/buổi, lấy buổi đầu để hiển thị gọn.
+    private String firstSession(String scheduleText) {
+        if (scheduleText == null) return "";
+        String t = scheduleText.replace("\r", "").trim();
+        if (t.isBlank()) return "";
+        // ưu tiên theo ';' vì SQL string_agg đang dùng '; '
+        String[] parts = t.split(";");
+        return parts.length > 0 ? parts[0].trim() : t;
+    }
+
+    private String extractDay(String scheduleText) {
+        String first = firstSession(scheduleText);
+        if (first.isBlank()) return "";
+        String[] tokens = first.split("\\s+");
+        return tokens.length > 0 ? tokens[0].trim() : "";
+    }
+
+    private String extractSlot(String scheduleText) {
+        String first = firstSession(scheduleText);
+        if (first.isBlank()) return "";
+        Matcher m = P_TIME.matcher(first);
+        if (m.find()) return m.group(1) + "-" + m.group(2);
+        return "";
+    }
+
+    private String extractRoom(String scheduleText) {
+        String first = firstSession(scheduleText);
+        if (first.isBlank()) return "";
+        Matcher m = P_ROOM.matcher(first);
+        if (m.find()) return m.group(1);
+        return "";
+    }
+
+    private String s(String v) { return v == null ? "" : v; }
+    private String sl(String v) { return v == null ? "" : v.toLowerCase(); }
 
     private void info(String title, String msg) {
         Alert a = new Alert(Alert.AlertType.INFORMATION);

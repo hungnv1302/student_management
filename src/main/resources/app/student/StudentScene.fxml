@@ -7,36 +7,122 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="700.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controller.student.StudentDashboardController">
+<BorderPane prefHeight="700.0" prefWidth="1000.0"
+            xmlns="http://javafx.com/javafx/25"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.controller.student.StudentDashboardController">
+
+    <!-- SIDEBAR -->
     <left>
-        <VBox prefHeight="670.0" prefWidth="250.0" style="-fx-background-color: #004D40;" BorderPane.alignment="CENTER">
+        <VBox prefHeight="670.0" prefWidth="250.0"
+              style="-fx-background-color: #004D40;"
+              BorderPane.alignment="CENTER">
+
             <children>
-                <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="70.0" prefWidth="250.0" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-background-color: #00362C;" text="SINH VIÊN" textFill="WHITE">
+
+                <!-- HEADER -->
+                <Label alignment="CENTER"
+                       prefHeight="70.0"
+                       prefWidth="250.0"
+                       text="SINH VIÊN"
+                       textFill="WHITE"
+                       style="-fx-font-size: 18; -fx-font-weight: bold; -fx-background-color: #00362C;">
                     <padding>
-                        <Insets top="10.0" />
+                        <Insets top="10.0"/>
                     </padding>
                 </Label>
 
+                <!-- MENU -->
                 <VBox spacing="5.0">
                     <padding>
-                        <Insets top="20.0" />
+                        <Insets top="20.0"/>
                     </padding>
-                    <Button fx:id="profileButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#profileHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;" text="  📁 Hồ sơ Cá nhân" />
-                    <Button fx:id="registrationButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#registrationHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-font-weight: bold; -fx-font-size: 14;" text="  📝 Đăng ký Học phần" /> <Button fx:id="scheduleButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scheduleHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;" text="  📅 Thời khóa biểu" />
-                    <Button fx:id="scoresButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scoresHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;" text="  💯 Kết quả Học tập" />
+
+                    <Button fx:id="profileButton"
+                            alignment="BASELINE_LEFT"
+                            prefHeight="50.0"
+                            prefWidth="250.0"
+                            mnemonicParsing="false"
+                            onAction="#profileHandle"
+                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
+                            text="  📁 Hồ sơ Cá nhân"/>
+
+                    <Button fx:id="registrationButton"
+                            alignment="BASELINE_LEFT"
+                            prefHeight="50.0"
+                            prefWidth="250.0"
+                            mnemonicParsing="false"
+                            onAction="#registrationHandle"
+                            style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-font-weight: bold; -fx-font-size: 14;"
+                            text="  📝 Đăng ký Học phần"/>
+
+                    <Button fx:id="scheduleButton"
+                            alignment="BASELINE_LEFT"
+                            prefHeight="50.0"
+                            prefWidth="250.0"
+                            mnemonicParsing="false"
+                            onAction="#scheduleHandle"
+                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
+                            text="  📅 Thời khóa biểu"/>
+
+                    <Button fx:id="scheduleOpenButton"
+                            alignment="BASELINE_LEFT"
+                            prefHeight="50.0"
+                            prefWidth="250.0"
+                            mnemonicParsing="false"
+                            onAction="#scheduleOpenHandle"
+                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
+                            text="  📌 TKB tạm thời (kỳ đăng ký)"/>
+
+
+                    <Button fx:id="scoresButton"
+                            alignment="BASELINE_LEFT"
+                            prefHeight="50.0"
+                            prefWidth="250.0"
+                            mnemonicParsing="false"
+                            onAction="#scoresHandle"
+                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
+                            text="  💯 Kết quả Học tập"/>
                 </VBox>
 
-                <VBox VBox.vgrow="ALWAYS" />
+                <!-- PUSH FOOTER -->
+                <VBox VBox.vgrow="ALWAYS"/>
+                <Button fx:id="changePasswordButton"
+                        alignment="BASELINE_LEFT"
+                        prefHeight="50.0"
+                        prefWidth="250.0"
+                        mnemonicParsing="false"
+                        onAction="#changePasswordHandle"
+                        style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
+                        text="  🔒 Đổi mật khẩu"/>
 
-                <Button alignment="CENTER" mnemonicParsing="false" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: #B0BEC5; -fx-text-fill: #212121; -fx-font-weight: bold; -fx-cursor: hand;" text="🚪 Đăng xuất" />
+
+                <!-- LOGOUT -->
+                <Button fx:id="logoutButton"
+                        alignment="CENTER"
+                        prefHeight="50.0"
+                        prefWidth="250.0"
+                        mnemonicParsing="false"
+                        onAction="#logoutHandle"
+                        style="-fx-background-color: #B0BEC5; -fx-text-fill: #212121; -fx-font-weight: bold; -fx-cursor: hand;"
+                        text="🚪 Đăng xuất"/>
+
             </children>
         </VBox>
     </left>
+
+    <!-- CONTENT -->
     <center>
-        <ScrollPane fitToWidth="true" style="-fx-background-color: #F8F8F8;"> <content>
-            <VBox fx:id="contentArea" prefWidth="740.0" spacing="25.0" style="-fx-padding: 30;">
-            </VBox>
-        </content>
+        <ScrollPane fitToWidth="true"
+                    style="-fx-background-color: #F8F8F8;">
+            <content>
+                <VBox fx:id="contentArea"
+                      prefWidth="740.0"
+                      spacing="25.0"
+                      style="-fx-padding: 30;">
+                </VBox>
+            </content>
         </ScrollPane>
     </center>
+
 </BorderPane>

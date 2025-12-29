@@ -9,10 +9,14 @@ public class Enrollment {
     private Student student;
     private ClassSection classSection;
 
-    private double midtermScore;
-    private double finalScore;
-    private double otherScore;
-    private double totalScore;
+    // ✅ Kỳ của sinh viên (enrollments.semester_no)
+    private Short semesterNo;
+
+    // ✅ dùng Double để cho phép null (kỳ đang học chưa có điểm)
+    private Double midtermScore;
+    private Double finalScore;
+    private Double otherScore;
+    private Double totalScore;
 
     private EnrollmentStatus status;
 
@@ -34,22 +38,28 @@ public class Enrollment {
     public ClassSection getClassSection() { return classSection; }
     public void setClassSection(ClassSection classSection) { this.classSection = classSection; }
 
-    public double getMidtermScore() { return midtermScore; }
-    public void setMidtermScore(double midtermScore) { this.midtermScore = midtermScore; }
+    public Short getSemesterNo() { return semesterNo; }
+    public void setSemesterNo(Short semesterNo) { this.semesterNo = semesterNo; }
 
-    public double getFinalScore() { return finalScore; }
-    public void setFinalScore(double finalScore) { this.finalScore = finalScore; }
+    public Double getMidtermScore() { return midtermScore; }
+    public void setMidtermScore(Double midtermScore) { this.midtermScore = midtermScore; }
 
-    public double getOtherScore() { return otherScore; }
-    public void setOtherScore(double otherScore) { this.otherScore = otherScore; }
+    public Double getFinalScore() { return finalScore; }
+    public void setFinalScore(Double finalScore) { this.finalScore = finalScore; }
 
-    public double getTotalScore() { return totalScore; }
-    public void setTotalScore(double totalScore) { this.totalScore = totalScore; }
+    public Double getOtherScore() { return otherScore; }
+    public void setOtherScore(Double otherScore) { this.otherScore = otherScore; }
+
+    public Double getTotalScore() { return totalScore; }
+    public void setTotalScore(Double totalScore) { this.totalScore = totalScore; }
 
     public EnrollmentStatus getStatus() { return status; }
     public void setStatus(EnrollmentStatus status) { this.status = status; }
 
+    // ✅ Tính tổng chỉ khi có đủ điểm
     public void calculateTotal() {
+        if (midtermScore == null || finalScore == null) return;
+
         this.totalScore = midtermScore * 0.5 + finalScore * 0.5;
 
         if (this.totalScore >= 4.0) {

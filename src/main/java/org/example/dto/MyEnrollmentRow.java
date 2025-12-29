@@ -7,6 +7,8 @@ public class MyEnrollmentRow {
     private int credit;
     private short termNo;
     private String status;
+    private String scheduleText;
+
 
     public String getClassId() { return classId; }
     public void setClassId(String classId) { this.classId = classId; }
@@ -20,4 +22,7 @@ public class MyEnrollmentRow {
     public void setTermNo(short termNo) { this.termNo = termNo; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getScheduleText() { return scheduleText; }
+    public void setScheduleText(String scheduleText) { this.scheduleText = scheduleText; }
+
 }
