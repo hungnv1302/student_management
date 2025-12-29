@@ -1,6 +1,5 @@
 package org.example.service;
 
-import org.example.dto.LecturerExamRow;
 import org.example.dto.LecturerTimetableRow;
 import org.example.repository.TimeSlotRepository;
 import org.example.service.exception.BusinessException;
@@ -12,13 +11,8 @@ import java.util.List;
 public class LecturerScheduleService {
     private final TimeSlotRepository repo = new TimeSlotRepository();
 
-    public List<LecturerTimetableRow> timetable(String lecturerId, short termNo) {
-        try { return repo.lecturerTimetable(lecturerId, termNo); }
-        catch (SQLException e) { throw new BusinessException(toNiceMessage(e)); }
-    }
-
-    public List<LecturerExamRow> examSchedule(String lecturerId, short termNo) {
-        try { return repo.lecturerExamSchedule(lecturerId, termNo); }
+    public List<LecturerTimetableRow> schedule(String lecturerId, int termYear, short termSem) {
+        try { return repo.lecturerSchedule(lecturerId, termYear, termSem); }
         catch (SQLException e) { throw new BusinessException(toNiceMessage(e)); }
     }
 

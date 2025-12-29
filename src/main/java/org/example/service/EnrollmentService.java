@@ -1,7 +1,5 @@
 package org.example.service;
 
-import org.example.dto.TodayScheduleRow;
-import org.example.repository.RegistrationConfigRepository;
 import org.example.dto.MyEnrollmentRow;
 import org.example.dto.OpenClassRow;
 import org.example.dto.ScheduleRow;
@@ -14,6 +12,7 @@ import java.util.List;
 
 public class EnrollmentService {
     private final EnrollmentRepository repo = new EnrollmentRepository();
+    private final StudentScheduleService termService = new StudentScheduleService();
 
     public void enroll(String studentId, String classId) {
         try {
@@ -31,48 +30,51 @@ public class EnrollmentService {
         }
     }
 
+    /** ✅ danh sách lớp mở cho SV (open term) */
     public List<OpenClassRow> listAvailable(String studentId) {
         try {
-            return repo.listAvailableSections(studentId);
+            return repo.listOpenSectionsForStudent(studentId);
         } catch (SQLException e) {
             throw new BusinessException(toNiceMessage(e));
         }
     }
 
+    /** ✅ lớp SV đã đăng ký trong open term */
     public List<MyEnrollmentRow> listMine(String studentId) {
         try {
-            return repo.listMyEnrollments(studentId);
+            return repo.listMyOpenEnrollments(studentId);
         } catch (SQLException e) {
             throw new BusinessException(toNiceMessage(e));
         }
     }
 
-    public List<ScheduleRow> schedule(String studentId, short termNo) {
+    /** ✅ TKB theo kỳ cụ thể */
+    public List<ScheduleRow> schedule(String studentId, int termYear, short termSem) {
         try {
-            return repo.getStudentSchedule(studentId, termNo);
+            return repo.getStudentSchedule(studentId, termYear, termSem);
         } catch (SQLException e) {
             throw new BusinessException(toNiceMessage(e));
         }
+    }
+
+    /** ✅ TKB kỳ đang học */
+    public List<ScheduleRow> scheduleCurrentTerm(String studentId) {
+        StudentScheduleService.TermKey t = termService.getCurrentTerm();
+        return schedule(studentId, t.year(), t.sem());
+    }
+
+    /** ✅ TKB kỳ đăng ký (open term) */
+    public List<ScheduleRow> scheduleOpenTerm(String studentId) {
+        StudentScheduleService.TermKey t = termService.getOpenTerm();
+        return schedule(studentId, t.year(), t.sem());
     }
 
     private String toNiceMessage(SQLException e) {
-        // message từ RAISE EXCEPTION thường nằm ở ServerErrorMessage
         if (e instanceof PSQLException pe && pe.getServerErrorMessage() != null) {
             String m = pe.getServerErrorMessage().getMessage();
             if (m != null && !m.isBlank()) return m;
         }
-        // unique violation (vd insert enroll trùng) -> báo thân thiện
         if ("23505".equals(e.getSQLState())) return "Bạn đã đăng ký lớp này rồi.";
         return "Lỗi hệ thống: " + e.getMessage();
-    }
-
-    public java.util.List<TodayScheduleRow> scheduleToday(String studentId) {
-        try {
-            Short openTerm = new RegistrationConfigRepository().getOpenTerm();
-            if (openTerm == null) return java.util.List.of(); // chưa mở kỳ nào
-            return repo.getStudentScheduleToday(studentId, openTerm);
-        } catch (java.sql.SQLException e) {
-            throw new BusinessException(toNiceMessage(e));
-        }
     }
 }

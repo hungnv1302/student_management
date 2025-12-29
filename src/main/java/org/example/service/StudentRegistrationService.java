@@ -1,8 +1,9 @@
 package org.example.service;
 
-import org.example.dto.*;
+import org.example.dto.EnrolledRow;
+import org.example.dto.MyEnrollmentRow;
+import org.example.dto.OpenClassRow;
 import org.example.repository.EnrollmentRepository;
-import org.example.repository.RegistrationConfigRepository;
 import org.example.service.exception.BusinessException;
 import org.postgresql.util.PSQLException;
 
@@ -13,22 +14,18 @@ import java.util.Objects;
 public class StudentRegistrationService {
 
     private final EnrollmentRepository enrollmentRepo = new EnrollmentRepository();
-    private final RegistrationConfigRepository regRepo = new RegistrationConfigRepository();
 
-    /** Danh sách lớp còn chỗ & đang OPEN ở kỳ đang mở đăng ký (DB tự lọc) */
+    /** Danh sách lớp mở kỳ đang mở đăng ký + eligibility/reason (Java tự tính) */
     public List<OpenClassRow> getOpenClasses(String studentId) {
         Objects.requireNonNull(studentId, "studentId is null");
         try {
-            return enrollmentRepo.listAvailableSections(studentId);
+            return enrollmentRepo.listOpenSectionsForStudent(studentId);
         } catch (SQLException e) {
             throw new BusinessException(toNiceMessage(e));
         }
     }
 
-    /**
-     * Search: vì function hiện tại chưa có tham số keyword,
-     * nên search trên Java từ danh sách lớp mở (nhẹ, an toàn).
-     */
+    /** Search trên Java */
     public List<OpenClassRow> searchOpenClasses(String studentId, String keyword) {
         Objects.requireNonNull(studentId, "studentId is null");
         String k = keyword == null ? "" : keyword.trim().toLowerCase();
@@ -40,19 +37,25 @@ public class StudentRegistrationService {
                 safe(r.getClassId()).contains(k) ||
                         safe(r.getSubjectId()).contains(k) ||
                         safe(r.getSubjectName()).contains(k) ||
-                        String.valueOf(r.getCredit()).contains(k)
+                        String.valueOf(r.getCredit()).contains(k) ||
+                        safe(r.getLecturerName()).contains(k) ||
+                        safe(r.getScheduleText()).contains(k)
         ).toList();
     }
 
-    /** Lớp cháu đã đăng ký trong kỳ đang mở (DB tự join subjects/sections) */
+    /** Lớp SV đã đăng ký trong kỳ đang mở (open term) */
     public List<EnrolledRow> getEnrolledClasses(String studentId) {
+        Objects.requireNonNull(studentId, "studentId is null");
         try {
-            List<MyEnrollmentRow> rows = enrollmentRepo.listMyEnrollments(studentId);
+            List<MyEnrollmentRow> rows = enrollmentRepo.listMyOpenEnrollments(studentId);
 
-            // timeText: nếu muốn hiển thị lịch, ta sẽ gọi get_student_schedule() để build timeText.
-            // Tạm thời cho "" để build chạy trước.
             return rows.stream()
-                    .map(r -> new EnrolledRow(r.getClassId(), r.getSubjectName(), "", r.getStatus()))
+                    .map(r -> new EnrolledRow(
+                            r.getClassId(),
+                            r.getSubjectName(),
+                            safeKeep(r.getScheduleText()),
+                            r.getStatus()
+                    ))
                     .toList();
 
         } catch (SQLException e) {
@@ -60,7 +63,6 @@ public class StudentRegistrationService {
         }
     }
 
-    /** Đăng ký lớp: DB tự check mở đăng ký, full, trùng lịch, 24 tín... */
     public void register(String studentId, String classId) {
         Objects.requireNonNull(studentId, "studentId is null");
         Objects.requireNonNull(classId, "classId is null");
@@ -71,7 +73,6 @@ public class StudentRegistrationService {
         }
     }
 
-    /** Hủy đăng ký: DB tự check còn mở đăng ký + chưa finalized */
     public void drop(String studentId, String classId) {
         Objects.requireNonNull(studentId, "studentId is null");
         Objects.requireNonNull(classId, "classId is null");
@@ -82,47 +83,31 @@ public class StudentRegistrationService {
         }
     }
 
-    /** Thời khóa biểu theo term */
-    public List<ScheduleRow> getSchedule(String studentId, short termNo) {
+    /** Tổng tín chỉ SV đã đăng ký trong open term */
+    public int getOpenCredits(String studentId) {
         Objects.requireNonNull(studentId, "studentId is null");
         try {
-            return enrollmentRepo.getStudentSchedule(studentId, termNo);
+            return enrollmentRepo.getOpenCredits(studentId);
         } catch (SQLException e) {
             throw new BusinessException(toNiceMessage(e));
         }
     }
 
-    /** Lịch hôm nay: tự lấy open term (get_open_term) */
-    public List<TodayScheduleRow> getScheduleToday(String studentId) {
-        Objects.requireNonNull(studentId, "studentId is null");
-        try {
-            Short openTerm = regRepo.getOpenTerm();
-            if (openTerm == null) return List.of();
-            return enrollmentRepo.getStudentScheduleToday(studentId, openTerm);
-        } catch (SQLException e) {
-            throw new BusinessException(toNiceMessage(e));
-        }
-    }
-
-    private String safe(String s) {
-        return s == null ? "" : s.toLowerCase();
-    }
+    private String safe(String s) { return s == null ? "" : s.toLowerCase(); }
+    private String safeKeep(String s) { return s == null ? "" : s; }
 
     private String toNiceMessage(SQLException e) {
+        // Ưu tiên message custom do mình throw (SQLException("..."))
+        if (e.getMessage() != null && !e.getMessage().isBlank()) {
+            // nếu là error từ server cũng sẽ nằm ở đây, ok luôn
+        }
+
         if (e instanceof PSQLException pe && pe.getServerErrorMessage() != null) {
             String m = pe.getServerErrorMessage().getMessage();
             if (m != null && !m.isBlank()) return m;
         }
+
         if ("23505".equals(e.getSQLState())) return "Bạn đã đăng ký lớp này rồi.";
-        return "Lỗi hệ thống: " + e.getMessage();
+        return e.getMessage() != null ? e.getMessage() : ("Lỗi hệ thống: " + e);
     }
-
-    public int getCurrentCredits(String studentId) {
-        try {
-            return enrollmentRepo.getCurrentCredits(studentId);
-        } catch (SQLException e) {
-            throw new RuntimeException("DB error getCurrentCredits: " + e.getMessage(), e);
-        }
-    }
-
 }

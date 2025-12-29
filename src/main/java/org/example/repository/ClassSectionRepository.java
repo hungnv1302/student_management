@@ -4,7 +4,10 @@ import org.example.config.DbConfig;
 import org.example.domain.ClassSection;
 import org.example.domain.Subject;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Optional;
 
 public class ClassSectionRepository {
@@ -13,7 +16,7 @@ public class ClassSectionRepository {
 
     public Optional<ClassSection> findById(String classId) throws SQLException {
         String sql = """
-            SELECT class_id, subject_id, term_no, capacity, status, room, note
+            SELECT class_id, subject_id, term_year, term_sem, capacity, status, room, note
             FROM qlsv.sections
             WHERE class_id = ?
         """;
@@ -28,7 +31,8 @@ public class ClassSectionRepository {
 
                 ClassSection cs = new ClassSection();
                 cs.setClassID(rs.getString("class_id"));
-                cs.setTermNo(rs.getShort("term_no"));
+                cs.setTermYear(rs.getInt("term_year"));
+                cs.setTermSem(rs.getShort("term_sem"));
                 cs.setCapacity(rs.getInt("capacity"));
                 cs.setStatus(rs.getString("status"));
                 cs.setRoom(rs.getString("room"));
@@ -43,13 +47,12 @@ public class ClassSectionRepository {
         }
     }
 
-    /** Đếm SV đang học (IN_PROGRESS) giống rule trước của cháu */
-    public int countEnrolledInProgress(String classId) throws SQLException {
+    /** Đếm tổng số enrollment của lớp (khuyên dùng) */
+    public int countEnrolled(String classId) throws SQLException {
         String sql = """
-            SELECT COUNT(*) AS cnt
+            SELECT COUNT(*)::int AS cnt
             FROM qlsv.enrollments
             WHERE class_id = ?
-              AND status = 'IN_PROGRESS'
         """;
 
         try (Connection c = DbConfig.getInstance().getConnection();

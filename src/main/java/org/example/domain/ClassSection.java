@@ -7,9 +7,13 @@ import java.util.Objects;
 
 public class ClassSection {
     private String classID;     // sections.class_id (varchar(6))
-    private short termNo;       // sections.term_no (smallint)
+
+    // ✅ DB mới: sections.term_year + sections.term_sem
+    private int termYear;       // sections.term_year (int)
+    private short termSem;      // sections.term_sem (smallint: 1/2)
+
     private int capacity;       // sections.capacity
-    private String status;      // sections.status (OPEN/CLOSED/LOCKED/CANCELED)
+    private String status;      // sections.status (OPEN/CLOSED/CANCELLED)
     private String room;        // sections.room
     private String note;        // sections.note
 
@@ -21,10 +25,11 @@ public class ClassSection {
 
     public ClassSection() {}
 
-    public ClassSection(String classID, short termNo, int capacity, String status, String room, String note,
-                        Schedule schedule, Subject subject, Lecturer lecturer) {
+    public ClassSection(String classID, int termYear, short termSem, int capacity, String status,
+                        String room, String note, Schedule schedule, Subject subject, Lecturer lecturer) {
         this.classID = classID;
-        this.termNo = termNo;
+        this.termYear = termYear;
+        this.termSem = termSem;
         this.capacity = capacity;
         this.status = status;
         this.room = room;
@@ -37,8 +42,14 @@ public class ClassSection {
     public String getClassID() { return classID; }
     public void setClassID(String classID) { this.classID = classID; }
 
-    public short getTermNo() { return termNo; }
-    public void setTermNo(short termNo) { this.termNo = termNo; }
+    public int getTermYear() { return termYear; }
+    public void setTermYear(int termYear) { this.termYear = termYear; }
+
+    public short getTermSem() { return termSem; }
+    public void setTermSem(short termSem) { this.termSem = termSem; }
+
+    /** tiện để hiển thị */
+    public String getTermKey() { return termYear + "." + termSem; }
 
     public int getCapacity() { return capacity; }
     public void setCapacity(int capacity) { this.capacity = capacity; }
@@ -73,7 +84,6 @@ public class ClassSection {
         enrollments.remove(enrollment);
     }
 
-    /** Lưu ý: enrollments list thường không load đủ khi dùng DB functions */
     public boolean isFull() {
         return capacity > 0 && enrollments.size() >= capacity;
     }

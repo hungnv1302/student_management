@@ -2,9 +2,8 @@ package org.example.service;
 
 public class SessionContext {
 
-    // username = ID duy nhất (student_id / lecturer_id / admin_id)
     private static String username;
-    private static String role; // ADMIN / LECTURER / STUDENT
+    private static String role;
 
     private SessionContext() {}
 
@@ -38,7 +37,4 @@ public class SessionContext {
         return "LECTURER".equalsIgnoreCase(role);
     }
 
-    public static boolean isAdmin() {
-        return "ADMIN".equalsIgnoreCase(role);
-    }
 }

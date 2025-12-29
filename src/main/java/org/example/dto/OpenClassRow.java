@@ -5,31 +5,50 @@ public class OpenClassRow {
     private String subjectId;
     private String subjectName;
     private int credit;
+
     private int capacity;
-    private long enrolledCount;
-    private String status;
-    private short termNo;
+    private int enrolledCount;
+    private int remainingSeats;
+
+    private String lecturerName;
+    private String scheduleText;
+
+    // ELIGIBLE / FULL / ENROLLED / BLOCKED / CONFLICT / CLOSED
+    private String eligibility;
+    private String reason;
+
+    // ===== getters/setters =====
 
     public String getClassId() { return classId; }
     public void setClassId(String classId) { this.classId = classId; }
+
     public String getSubjectId() { return subjectId; }
     public void setSubjectId(String subjectId) { this.subjectId = subjectId; }
+
     public String getSubjectName() { return subjectName; }
     public void setSubjectName(String subjectName) { this.subjectName = subjectName; }
+
     public int getCredit() { return credit; }
     public void setCredit(int credit) { this.credit = credit; }
+
     public int getCapacity() { return capacity; }
     public void setCapacity(int capacity) { this.capacity = capacity; }
-    public long getEnrolledCount() { return enrolledCount; }
-    public void setEnrolledCount(long enrolledCount) { this.enrolledCount = enrolledCount; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public short getTermNo() { return termNo; }
-    public void setTermNo(short termNo) { this.termNo = termNo; }
-    public String getClassCode() { return "LHP" + classId; }
-    public String getSubjectCode() { return "SUB" + subjectId; }
-    public int getCredits() { return credit; }
 
-    public String getLecturerName() { return ""; }
+    public int getEnrolledCount() { return enrolledCount; }
+    public void setEnrolledCount(int enrolledCount) { this.enrolledCount = enrolledCount; }
 
+    public int getRemainingSeats() { return remainingSeats; }
+    public void setRemainingSeats(int remainingSeats) { this.remainingSeats = remainingSeats; }
+
+    public String getLecturerName() { return lecturerName; }
+    public void setLecturerName(String lecturerName) { this.lecturerName = lecturerName; }
+
+    public String getScheduleText() { return scheduleText; }
+    public void setScheduleText(String scheduleText) { this.scheduleText = scheduleText; }
+
+    public String getEligibility() { return eligibility; }
+    public void setEligibility(String eligibility) { this.eligibility = eligibility; }
+
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
 }

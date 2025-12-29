@@ -9,7 +9,10 @@ public class ScheduleRow {
     private String room;
     private String classId;
     private String subjectName;
+    private String lecturerName;
 
+    public String getLecturerName() { return lecturerName; }
+    public void setLecturerName(String lecturerName) { this.lecturerName = lecturerName; }
     public int getDayOfWeek() { return dayOfWeek; }
     public void setDayOfWeek(int dayOfWeek) { this.dayOfWeek = dayOfWeek; }
     public LocalTime getStartTime() { return startTime; }
