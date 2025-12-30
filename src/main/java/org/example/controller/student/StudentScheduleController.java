@@ -96,6 +96,7 @@ public class StudentScheduleController {
 
         VBox box = new VBox(4, title, sub);
         box.getStyleClass().add("tt-entry");
+        applySubjectColor(box, r);
         box.setPadding(new javafx.geometry.Insets(8, 10, 8, 10));
         box.setMaxWidth(Double.MAX_VALUE);
         box.setOnMouseClicked(e -> {
@@ -189,9 +190,6 @@ public class StudentScheduleController {
         return box;
     }
 
-    /** DB bạn đang lưu day_of_week theo 2..8 (T2..CN) hay ISO 1..7 tuỳ thiết kế.
-     * Ở code trước bạn dùng trực tiếp, mình giữ nguyên.
-     */
     private int isoDowToCol(int isoDow) { return isoDow; }
 
     private int timeToSlot(LocalTime start) {
@@ -216,4 +214,56 @@ public class StudentScheduleController {
         a.setContentText(msg);
         a.showAndWait();
     }
+
+    private void applySubjectColor(VBox box, ScheduleRow r) {
+        // ưu tiên classId (ổn định hơn), fallback subjectName
+        String key = !blank(r.getClassId()) ? r.getClassId() : nvl(r.getSubjectName());
+
+        int h = Math.abs(key.hashCode());
+
+        // palette dịu mắt, không bị "giúm gió"
+        String[][] palettes = {
+                {"#E6FFFA", "#CCFBF1", "#0B7D6E"},
+                {"#EEF2FF", "#E0E7FF", "#4338CA"},
+                {"#ECFEFF", "#CFFAFE", "#0E7490"},
+                {"#FDF4FF", "#FAE8FF", "#86198F"},
+                {"#FFF7ED", "#FFEDD5", "#C2410C"},
+                {"#F0FDF4", "#DCFCE7", "#166534"}
+        };
+
+        String[] p = palettes[h % palettes.length];
+        String c1 = p[0], c2 = p[1], border = p[2];
+
+        box.setStyle(
+                "-fx-background-color: linear-gradient(to bottom right, " + c1 + ", " + c2 + ");" +
+                        "-fx-border-color: " + border + ";" +
+                        "-fx-border-width: 1 1 1 6;" +
+                        "-fx-background-radius: 14;" +
+                        "-fx-border-radius: 14;"
+        );
+    }
+
+    private String hslToHex(double h, double s, double l) {
+        // convert HSL -> RGB -> HEX
+        double c = (1 - Math.abs(2 * l - 1)) * s;
+        double x = c * (1 - Math.abs((h / 60.0) % 2 - 1));
+        double m = l - c / 2.0;
+
+        double r1=0, g1=0, b1=0;
+        if (0 <= h && h < 60) { r1=c; g1=x; b1=0; }
+        else if (60 <= h && h < 120) { r1=x; g1=c; b1=0; }
+        else if (120 <= h && h < 180) { r1=0; g1=c; b1=x; }
+        else if (180 <= h && h < 240) { r1=0; g1=x; b1=c; }
+        else if (240 <= h && h < 300) { r1=x; g1=0; b1=c; }
+        else { r1=c; g1=0; b1=x; }
+
+        int r = (int)Math.round((r1 + m) * 255);
+        int g = (int)Math.round((g1 + m) * 255);
+        int b = (int)Math.round((b1 + m) * 255);
+
+        return String.format("#%02X%02X%02X", clamp255(r), clamp255(g), clamp255(b));
+    }
+
+    private int clamp255(int v) { return Math.max(0, Math.min(255, v)); }
+
 }

@@ -5,107 +5,61 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="700.0" prefWidth="1000.0"
-            xmlns="http://javafx.com/javafx/25"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.example.controller.student.StudentDashboardController">
+<BorderPane prefHeight="700.0" prefWidth="1000.0" styleClass="dashboard" stylesheets="@/css/student/student-scene.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controller.student.StudentDashboardController">
 
     <!-- SIDEBAR -->
     <left>
-        <VBox prefHeight="670.0" prefWidth="250.0"
-              style="-fx-background-color: #004D40;"
-              BorderPane.alignment="CENTER">
+        <VBox prefHeight="670.0" prefWidth="260.0" styleClass="sidebar" BorderPane.alignment="CENTER">
 
             <children>
 
                 <!-- HEADER -->
-                <Label alignment="CENTER"
-                       prefHeight="70.0"
-                       prefWidth="250.0"
-                       text="SINH VIÊN"
-                       textFill="WHITE"
-                       style="-fx-font-size: 18; -fx-font-weight: bold; -fx-background-color: #00362C;">
+                <VBox styleClass="sidebar-header">
+                    <children>
+                        <Label styleClass="sidebar-title" text="SINH VIÊN" />
+                    </children>
                     <padding>
-                        <Insets top="10.0"/>
+                        <Insets bottom="16" left="18" right="18" top="16" />
                     </padding>
-                </Label>
+                </VBox>
 
                 <!-- MENU -->
-                <VBox spacing="5.0">
+                <VBox spacing="8.0" styleClass="menu">
                     <padding>
-                        <Insets top="20.0"/>
+                        <Insets bottom="14" left="14" right="14" top="14" />
                     </padding>
 
-                    <Button fx:id="profileButton"
-                            alignment="BASELINE_LEFT"
-                            prefHeight="50.0"
-                            prefWidth="250.0"
-                            mnemonicParsing="false"
-                            onAction="#profileHandle"
-                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
-                            text="  📁 Hồ sơ Cá nhân"/>
+                    <Button fx:id="profileButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#profileHandle" prefHeight="46.0" prefWidth="230.0" styleClass="nav-btn" text="📁  Hồ sơ Cá nhân" />
 
-                    <Button fx:id="registrationButton"
-                            alignment="BASELINE_LEFT"
-                            prefHeight="50.0"
-                            prefWidth="250.0"
-                            mnemonicParsing="false"
-                            onAction="#registrationHandle"
-                            style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-font-weight: bold; -fx-font-size: 14;"
-                            text="  📝 Đăng ký Học phần"/>
+                    <!-- Bạn đang set active bằng inline màu xanh.
+                         Ta vẫn giữ UI active: thêm styleClass nav-btn-active cho đúng nút đang chọn.
+                         Nếu sau này bạn muốn active động, chỉ cần add/remove class trong controller,
+                         nhưng hiện tại mình để mặc định active ở Đăng ký HP như bạn. -->
+                    <Button fx:id="registrationButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#registrationHandle" prefHeight="46.0" prefWidth="230.0" styleClass="nav-btn nav-btn-active" text="📝  Đăng ký Học phần" />
 
-                    <Button fx:id="scheduleButton"
-                            alignment="BASELINE_LEFT"
-                            prefHeight="50.0"
-                            prefWidth="250.0"
-                            mnemonicParsing="false"
-                            onAction="#scheduleHandle"
-                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
-                            text="  📅 Thời khóa biểu"/>
+                    <Button fx:id="scheduleButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scheduleHandle" prefHeight="46.0" prefWidth="230.0" styleClass="nav-btn" text="📅  Thời khóa biểu" />
 
-                    <Button fx:id="scheduleOpenButton"
-                            alignment="BASELINE_LEFT"
-                            prefHeight="50.0"
-                            prefWidth="250.0"
-                            mnemonicParsing="false"
-                            onAction="#scheduleOpenHandle"
-                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
-                            text="  📌 TKB tạm thời (kỳ đăng ký)"/>
+                    <Button fx:id="scheduleOpenButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scheduleOpenHandle" prefHeight="46.0" prefWidth="230.0" styleClass="nav-btn" text="📌  TKB tạm thời (kỳ đăng ký)" />
 
-
-                    <Button fx:id="scoresButton"
-                            alignment="BASELINE_LEFT"
-                            prefHeight="50.0"
-                            prefWidth="250.0"
-                            mnemonicParsing="false"
-                            onAction="#scoresHandle"
-                            style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
-                            text="  💯 Kết quả Học tập"/>
+                    <Button fx:id="scoresButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scoresHandle" prefHeight="46.0" prefWidth="230.0" styleClass="nav-btn" text="💯  Kết quả Học tập" />
                 </VBox>
 
                 <!-- PUSH FOOTER -->
-                <VBox VBox.vgrow="ALWAYS"/>
-                <Button fx:id="changePasswordButton"
-                        alignment="BASELINE_LEFT"
-                        prefHeight="50.0"
-                        prefWidth="250.0"
-                        mnemonicParsing="false"
-                        onAction="#changePasswordHandle"
-                        style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;"
-                        text="  🔒 Đổi mật khẩu"/>
+                <Region VBox.vgrow="ALWAYS" />
 
+                <VBox styleClass="sidebar-footer">
+                    <children>
+                        <Button fx:id="changePasswordButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#changePasswordHandle" prefHeight="46.0" prefWidth="230.0" styleClass="nav-btn nav-btn-secondary" text="🔒  Đổi mật khẩu" />
 
-                <!-- LOGOUT -->
-                <Button fx:id="logoutButton"
-                        alignment="CENTER"
-                        prefHeight="50.0"
-                        prefWidth="250.0"
-                        mnemonicParsing="false"
-                        onAction="#logoutHandle"
-                        style="-fx-background-color: #B0BEC5; -fx-text-fill: #212121; -fx-font-weight: bold; -fx-cursor: hand;"
-                        text="🚪 Đăng xuất"/>
+                        <Button fx:id="logoutButton" alignment="CENTER" mnemonicParsing="false" onAction="#logoutHandle" prefHeight="46.0" prefWidth="230.0" styleClass="logout-btn" text="🚪  Đăng xuất" />
+                    </children>
+                    <padding>
+                        <Insets bottom="18" left="14" right="14" top="0" />
+                    </padding>
+                </VBox>
 
             </children>
         </VBox>
@@ -113,14 +67,9 @@
 
     <!-- CONTENT -->
     <center>
-        <ScrollPane fitToWidth="true"
-                    style="-fx-background-color: #F8F8F8;">
+        <ScrollPane fitToWidth="true" styleClass="content-scroll">
             <content>
-                <VBox fx:id="contentArea"
-                      prefWidth="740.0"
-                      spacing="25.0"
-                      style="-fx-padding: 30;">
-                </VBox>
+                <VBox fx:id="contentArea" prefWidth="740.0" spacing="18.0" styleClass="content-area" />
             </content>
         </ScrollPane>
     </center>

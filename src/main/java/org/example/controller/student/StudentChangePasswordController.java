@@ -10,6 +10,7 @@ public class StudentChangePasswordController {
     @FXML private Label lblInfo;
     @FXML private Label lblSentTo;
     @FXML private TextField tfOtp;
+    @FXML private PasswordField pfOld;
     @FXML private PasswordField pfNew;
     @FXML private PasswordField pfConfirm;
     @FXML private Button btnSendOtp;
@@ -37,24 +38,36 @@ public class StudentChangePasswordController {
     @FXML
     private void changePasswordHandle() {
         try {
+            String old = pfOld.getText() == null ? "" : pfOld.getText();
             String otp = tfOtp.getText() == null ? "" : tfOtp.getText().trim();
             String p1 = pfNew.getText() == null ? "" : pfNew.getText();
             String p2 = pfConfirm.getText() == null ? "" : pfConfirm.getText();
+
+            if (old.isBlank()) {
+                info("Thiếu thông tin", "Vui lòng nhập mật khẩu hiện tại.");
+                return;
+            }
+
+            if (!otp.matches("\\d{6}")) {
+                info("OTP không hợp lệ", "OTP phải gồm đúng 6 chữ số.");
+                return;
+            }
 
             if (!p1.equals(p2)) {
                 info("Chưa khớp", "Mật khẩu nhập lại không khớp.");
                 return;
             }
 
-            service.verifyOtpAndChangePassword(usernameOrThrow(), otp, p1);
+            service.verifyOldPasswordOtpAndChangePassword(usernameOrThrow(), old, otp, p1);
 
-            tfOtp.clear(); pfNew.clear(); pfConfirm.clear();
+            pfOld.clear(); tfOtp.clear(); pfNew.clear(); pfConfirm.clear();
             lblSentTo.setText("");
             info("Thành công", "Đã đổi mật khẩu.");
         } catch (Exception e) {
             error("Không thể đổi mật khẩu", e.getMessage());
         }
     }
+
 
     private void info(String title, String msg) {
         Alert a = new Alert(Alert.AlertType.INFORMATION);

@@ -1,119 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<StackPane xmlns="http://javafx.com/javafx/25"
-           xmlns:fx="http://javafx.com/fxml/1"
-           fx:controller="org.example.controller.auth.LoginController"
-           style="-fx-background-color: #F8F8F8;">
+<StackPane styleClass="@/css/auth/login-scene.css" stylesheets="@/css/auth/login-scene.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controller.auth.LoginController">
 
-    <!-- Split layout: Left banner + Right login -->
-    <HBox prefWidth="1200.0" prefHeight="700.0">
+    <HBox prefHeight="700.0" prefWidth="1200.0" styleClass="shell">
 
-        <!-- LEFT -->
-        <VBox prefWidth="480.0"
-              alignment="CENTER"
-              style="-fx-background-color: #004D40;">
+        <!-- LEFT BRAND -->
+        <VBox alignment="CENTER" prefWidth="480.0" styleClass="brand">
             <children>
-                <ImageView fitHeight="230.0" fitWidth="280.0" preserveRatio="true">
+                <ImageView fitHeight="190.0" fitWidth="190.0" preserveRatio="true" styleClass="brand-logo">
                     <image>
                         <Image url="@/image/username.png" />
                     </image>
                 </ImageView>
 
-                <Label text="HỆ THỐNG QUẢN LÝ SINH VIÊN" textFill="WHITE" wrapText="true"
-                       maxWidth="380.0"
-                       style="-fx-alignment: center;">
+                <Label styleClass="brand-title" text="HỆ THỐNG&#10;QUẢN LÝ SINH VIÊN" wrapText="true">
                     <font>
-                        <Font name="System Bold" size="26.0"/>
+                        <Font name="System Bold" size="28.0" />
                     </font>
                 </Label>
             </children>
         </VBox>
 
-        <!-- RIGHT (grow + center card) -->
-        <StackPane HBox.hgrow="ALWAYS" style="-fx-padding: 40;">
+        <!-- RIGHT CONTENT -->
+        <StackPane styleClass="right" HBox.hgrow="ALWAYS">
             <children>
+                <VBox alignment="CENTER" maxWidth="460.0" spacing="22" styleClass="card">
 
-                <!-- Card -->
-                <VBox maxWidth="520.0"
-                      prefWidth="520.0"
-                      alignment="CENTER"
-                      spacing="18"
-                      style="-fx-background-color: WHITE;
-                             -fx-padding: 36 44 34 44;
-                             -fx-background-radius: 14;
-                             -fx-border-radius: 14;
-                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 18, 0.25, 0, 0);">
+                    <VBox alignment="CENTER" spacing="6">
+                        <Label styleClass="muted" text="Chào mừng trở lại!" />
+                        <Label styleClass="headline" text="Đăng nhập Hệ thống" />
+                    </VBox>
 
-                    <Label text="Đăng nhập Hệ thống" textFill="#004D40">
-                        <font>
-                            <Font name="System Bold" size="30.0"/>
-                        </font>
-                    </Label>
+                    <VBox spacing="14" styleClass="form">
+                        <VBox spacing="6">
+                            <Label styleClass="field-label" text="Tên đăng nhập" />
+                            <TextField fx:id="usernameField" promptText="Nhập tên đăng nhập" styleClass="input" />
+                        </VBox>
 
-                    <!-- Username row -->
-                    <HBox alignment="CENTER_LEFT" spacing="12" maxWidth="Infinity">
-                        <ImageView fitHeight="34.0" fitWidth="34.0" preserveRatio="true">
-                            <image>
-                                <Image url="@/image/user_icon.png"/>
-                            </image>
-                        </ImageView>
+                        <VBox spacing="6">
+                            <Label styleClass="field-label" text="Mật khẩu" />
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <StackPane HBox.hgrow="ALWAYS">
+                                    <PasswordField fx:id="passwordField" promptText="Nhập mật khẩu" styleClass="input" />
+                                    <TextField fx:id="passwordTextField" managed="false" promptText="Nhập mật khẩu" styleClass="input" visible="false" />
+                                </StackPane>
 
-                        <TextField fx:id="usernameField"
-                                   promptText="Tài khoản"
-                                   HBox.hgrow="ALWAYS"
-                                   style="-fx-background-color: #F8F8F8;
-                                          -fx-border-color: #CCCCCC;
-                                          -fx-border-radius: 8;
-                                          -fx-background-radius: 8;
-                                          -fx-padding: 10 12;"/>
+                                <!-- giữ onAction như bạn -->
+                                <ToggleButton fx:id="showPasswordToggle" onAction="#togglePassword" styleClass="switch-toggle" text="" />
+
+                            </HBox>
+                        </VBox>
+                    </VBox>
+
+                    <Button fx:id="loginButton" maxWidth="Infinity" onAction="#loginHandle" prefHeight="46.0" styleClass="primary" text="ĐĂNG NHẬP" />
+
+                    <Label fx:id="errorLabel" styleClass="error" wrapText="true" />
+
+                    <HBox alignment="CENTER" spacing="6">
+                        <Hyperlink onAction="#forgotPasswordHandle" styleClass="link" text="Quên mật khẩu?" />
                     </HBox>
 
-                    <!-- Password row -->
-                    <HBox alignment="CENTER_LEFT" spacing="12" maxWidth="Infinity">
-                        <ImageView fitHeight="34.0" fitWidth="34.0" preserveRatio="true">
-                            <image>
-                                <Image url="@/image/security_pic.png"/>
-                            </image>
-                        </ImageView>
-
-                        <PasswordField fx:id="passwordField"
-                                       promptText="Mật khẩu"
-                                       HBox.hgrow="ALWAYS"
-                                       style="-fx-background-color: #F8F8F8;
-                                              -fx-border-color: #CCCCCC;
-                                              -fx-border-radius: 8;
-                                              -fx-background-radius: 8;
-                                              -fx-padding: 10 12;"/>
-                    </HBox>
-
-                    <Button fx:id="loginButton"
-                            text="ĐĂNG NHẬP"
-                            onAction="#loginHandle"
-                            maxWidth="Infinity"
-                            prefHeight="46.0"
-                            style="-fx-background-color: #00796B;
-                                   -fx-font-weight: bold;
-                                   -fx-font-size: 16;
-                                   -fx-text-fill: WHITE;
-                                   -fx-background-radius: 10;"/>
-
-                    <Hyperlink text="Quên mật khẩu?"
-                               style="-fx-text-fill: #00796B;"/>
-
+                    <Region prefHeight="4" />
                 </VBox>
             </children>
         </StackPane>
