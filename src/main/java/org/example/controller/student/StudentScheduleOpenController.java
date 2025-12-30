@@ -1,263 +1,246 @@
 package org.example.controller.student;
 
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.example.dto.ScheduleRow;
 import org.example.service.SessionContext;
 import org.example.service.StudentScheduleService;
 
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
+import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
 public class StudentScheduleOpenController {
 
     @FXML private Label termLabel;
     @FXML private GridPane timetableGrid;
 
-    private final StudentScheduleService scheduleService = new StudentScheduleService();
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    private final StudentScheduleService service = new StudentScheduleService();
 
-    private final Map<String, StackPane> cellMap = new HashMap<>();
+    private static final String[] SLOT_LABELS = {
+            "Ca 1 (Tiết 1–3)\n06:45–09:10",
+            "Ca 2 (Tiết 4–6)\n09:20–11:45",
+            "Ca 3 (Tiết 7–9)\n12:30–14:55",
+            "Ca 4 (Tiết 10–12)\n15:05–17:30"
+    };
+
+    private static final String[] DAY_LABELS = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
+
+    private String getStudentIdOrThrow() {
+        String u = SessionContext.getUsername();
+        if (u == null || u.isBlank()) throw new IllegalStateException("Chưa đăng nhập.");
+        return u.trim();
+    }
 
     @FXML
     public void initialize() {
-        // ✅ bỏ phụ thuộc CSS file: set style inline
-        buildEmptyGrid();
-
-        String studentId = SessionContext.getUsername();
-        var open = scheduleService.getOpenTerm();
-        termLabel.setText("Kỳ tiếp theo: " + open);
-
-        List<ScheduleRow> rows = scheduleService.getScheduleOpenTerm(studentId);
-        fill(rows);
-    }
-
-    private void buildEmptyGrid() {
-        timetableGrid.getChildren().clear();
-        cellMap.clear();
-
-        // style nền chung cho grid
-        timetableGrid.setHgap(10);
-        timetableGrid.setVgap(10);
-        timetableGrid.setStyle(
-                "-fx-padding: 14;" +
-                        "-fx-background-color: #FFFFFF;" +
-                        "-fx-background-radius: 12;" +
-                        "-fx-border-color: #E5E7EB;" +
-                        "-fx-border-radius: 12;" +
-                        "-fx-border-width: 1;"
-        );
-
-        // Header row
-        String[] days = {"", "T2", "T3", "T4", "T5", "T6", "T7", "CN"};
-        for (int c = 0; c < days.length; c++) {
-            StackPane p = new StackPane();
-
-            if (c == 0) {
-                // ô góc trái
-                p.setStyle(
-                        "-fx-background-color: #F3F4F6;" +
-                                "-fx-background-radius: 10;" +
-                                "-fx-border-color: #E5E7EB;" +
-                                "-fx-border-radius: 10;" +
-                                "-fx-border-width: 1;" +
-                                "-fx-min-height: 44;"
-                );
-            } else {
-                p.setStyle(
-                        "-fx-background-color: #E6F4F1;" +
-                                "-fx-background-radius: 10;" +
-                                "-fx-border-color: #BFE6DD;" +
-                                "-fx-border-radius: 10;" +
-                                "-fx-border-width: 1;" +
-                                "-fx-min-height: 44;"
-                );
-                Label lb = new Label(days[c]);
-                lb.setStyle("-fx-font-weight: 700; -fx-text-fill: #0F766E;");
-                p.getChildren().add(lb);
-            }
-
-            timetableGrid.add(p, c, 0);
-        }
-
-        // Slot labels + cells
-        String[] slots = {
-                "Ca 1 (Tiết 1–3)\n06:45–09:10",
-                "Ca 2 (Tiết 4–6)\n09:20–11:45",
-                "Ca 3 (Tiết 7–9)\n12:30–14:55",
-                "Ca 4 (Tiết 10–12)\n15:05–17:30"
-        };
-
-        for (int r = 1; r <= 4; r++) {
-            // slot label col 0
-            StackPane slotPane = new StackPane();
-            slotPane.setStyle(
-                    "-fx-background-color: #F8FAFC;" +
-                            "-fx-background-radius: 12;" +
-                            "-fx-border-color: #E5E7EB;" +
-                            "-fx-border-radius: 12;" +
-                            "-fx-border-width: 1;" +
-                            "-fx-padding: 10;"
-            );
-
-            Label lb = new Label(slots[r - 1]);
-            lb.setWrapText(true);
-            lb.setStyle("-fx-font-weight: 600; -fx-text-fill: #111827;");
-            slotPane.getChildren().add(lb);
-
-            timetableGrid.add(slotPane, 0, r);
-
-            // cells col 1..7
-            for (int c = 1; c <= 7; c++) {
-                StackPane cell = new StackPane();
-                cell.setStyle(
-                        "-fx-background-color: #FFFFFF;" +
-                                "-fx-background-radius: 14;" +
-                                "-fx-border-color: #E5E7EB;" +
-                                "-fx-border-radius: 14;" +
-                                "-fx-border-width: 1;" +
-                                "-fx-padding: 10;"
-                );
-
-                timetableGrid.add(cell, c, r);
-                cellMap.put(key(r, c), cell);
-            }
+        try {
+            buildBaseGrid();
+            reload();
+        } catch (Exception ex) {
+            error("Lỗi tải TKB tạm thời", ex.getMessage());
         }
     }
 
-    private void fill(List<ScheduleRow> rows) {
+    private void reload() {
+        String studentId = getStudentIdOrThrow();
+
+        // ✅ Kỳ đăng ký tiếp theo
+        var open = service.getOpenTerm();
+        termLabel.setText("Thời khóa biểu tạm thời (kỳ đăng ký): " + open);
+
+        // ✅ Load lịch tạm thời
+        List<ScheduleRow> rows = service.getScheduleOpenTerm(studentId);
+
         for (ScheduleRow r : rows) {
-            int col = mapDayToCol(r.getDayOfWeek());
-            int row = mapTimeToSlot(r);
+            int dayCol = mapDayToCol(r.getDayOfWeek());      // 1..7
+            int slotRow = timeToSlot(r.getStartTime());      // 1..4
+            if (dayCol < 1 || dayCol > 7 || slotRow < 1 || slotRow > 4) continue;
 
-            StackPane cell = cellMap.get(key(row, col));
+            VBox cell = findCell(slotRow, dayCol);
             if (cell == null) continue;
 
-            VBox item = new VBox(6);
-
-            // ✅ card style (inline)
-            item.setStyle(
-                    "-fx-background-color: #ECFDF5;" +
-                            "-fx-border-color: #A7F3D0;" +
-                            "-fx-border-width: 1;" +
-                            "-fx-background-radius: 12;" +
-                            "-fx-border-radius: 12;" +
-                            "-fx-padding: 10;" +
-                            "-fx-cursor: hand;"
-            );
-
-            // hover nhẹ
-            item.setOnMouseEntered(e ->
-                    item.setStyle(
-                            "-fx-background-color: #D1FAE5;" +
-                                    "-fx-border-color: #6EE7B7;" +
-                                    "-fx-border-width: 1;" +
-                                    "-fx-background-radius: 12;" +
-                                    "-fx-border-radius: 12;" +
-                                    "-fx-padding: 10;" +
-                                    "-fx-cursor: hand;"
-                    )
-            );
-            item.setOnMouseExited(e ->
-                    item.setStyle(
-                            "-fx-background-color: #ECFDF5;" +
-                                    "-fx-border-color: #A7F3D0;" +
-                                    "-fx-border-width: 1;" +
-                                    "-fx-background-radius: 12;" +
-                                    "-fx-border-radius: 12;" +
-                                    "-fx-padding: 10;" +
-                                    "-fx-cursor: hand;"
-                    )
-            );
-
-            Label subject = new Label(shorten(r.getSubjectName(), 22));
-            subject.setStyle("-fx-font-weight: 800; -fx-text-fill: #065F46;");
-
-            Label room = new Label("Phòng: " + nullToDots(r.getRoom()));
-            room.setStyle("-fx-text-fill: #064E3B;");
-
-            Label clazz = new Label("Lớp: " + nullToDots(r.getClassId()));
-            clazz.setStyle("-fx-text-fill: #064E3B;");
-
-            item.getChildren().addAll(subject, room, clazz);
-
-            item.setOnMouseClicked(e -> showDetail(r));
-
-            cell.getChildren().add(item);
+            VBox entry = buildEntryCard(r, cell);
+            cell.getChildren().add(entry);
         }
     }
 
-    private void showDetail(ScheduleRow r) {
-        String time = (r.getStartTime() == null || r.getEndTime() == null)
-                ? "(không rõ)"
-                : r.getStartTime().format(TIME_FMT) + " - " + r.getEndTime().format(TIME_FMT);
+    private VBox buildEntryCard(ScheduleRow r, VBox cell) {
+        String subjectName = nvl(r.getSubjectName());
+        String room = blank(r.getRoom()) ? "" : r.getRoom();
 
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle("Chi tiết lịch học");
-        a.setHeaderText(r.getSubjectName());
-        a.setContentText(
-                "Mã lớp: " + nullToDots(r.getClassId()) + "\n" +
-                        "Thứ: " + dayLabel(r.getDayOfWeek()) + "\n" +
-                        "Giờ: " + time + "\n" +
-                        "Phòng: " + nullToDots(r.getRoom())
-        );
-        a.showAndWait();
+        Label title = new Label(subjectName);
+        title.getStyleClass().add("title");
+        title.setWrapText(true);
+        title.setMaxWidth(Double.MAX_VALUE);
+
+        Label sub = new Label(room.isBlank() ? "" : ("Phòng: " + room));
+        sub.getStyleClass().add("sub");
+        sub.setWrapText(true);
+        sub.setMaxWidth(Double.MAX_VALUE);
+
+        VBox box = new VBox(4, title, sub);
+        box.getStyleClass().add("tt-entry");
+
+        // ✅ full-width trong cell, nhìn “đầy”
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.prefWidthProperty().bind(cell.widthProperty().subtract(12));
+
+        // ✅ màu theo môn/lớp (KHÔNG dùng subjectCode)
+        applySubjectColor(box, r);
+
+        Tooltip.install(box, new Tooltip(subjectName + (room.isBlank() ? "" : ("\nPhòng: " + room))));
+
+        box.setOnMouseClicked(e -> {
+            Alert a = new Alert(Alert.AlertType.INFORMATION);
+            a.setTitle("Chi tiết lịch học");
+            a.setHeaderText(subjectName);
+            a.setContentText(
+                    "Mã lớp: " + nvl(r.getClassId()) + "\n" +
+                            "Giảng viên: " + nvl(r.getLecturerName()) + "\n" +
+                            "Phòng: " + (room.isBlank() ? "..." : room) + "\n" +
+                            "Giờ: " + nvl(String.valueOf(r.getStartTime())) + " - " + nvl(String.valueOf(r.getEndTime()))
+            );
+            a.showAndWait();
+        });
+
+        return box;
     }
 
-    // ===== helpers =====
+    // ✅ tạo màu ổn định theo classId (ưu tiên) hoặc subjectName
+    private void applySubjectColor(VBox box, ScheduleRow r) {
+        String key = !blank(r.getClassId()) ? r.getClassId() : nvl(r.getSubjectName());
+        int h = Math.abs(key.hashCode());
 
-    // map day -> col (1..7)
+        // palette dịu mắt, nhìn rõ (không "giúm gió")
+        String[][] palettes = {
+                {"#E6FFFA", "#CCFBF1", "#0B7D6E"},
+                {"#EEF2FF", "#E0E7FF", "#4338CA"},
+                {"#ECFEFF", "#CFFAFE", "#0E7490"},
+                {"#FDF4FF", "#FAE8FF", "#86198F"},
+                {"#FFF7ED", "#FFEDD5", "#C2410C"},
+                {"#F0FDF4", "#DCFCE7", "#166534"}
+        };
+
+        String[] p = palettes[h % palettes.length];
+        String c1 = p[0], c2 = p[1], border = p[2];
+
+        // style nền + viền trái nổi bật (giống schedule)
+        box.setStyle(
+                "-fx-background-color: linear-gradient(to bottom right, " + c1 + ", " + c2 + ");" +
+                        "-fx-border-color: " + border + ";" +
+                        "-fx-border-width: 1 1 1 6;" +
+                        "-fx-background-radius: 14;" +
+                        "-fx-border-radius: 14;"
+        );
+    }
+
+    private void buildBaseGrid() {
+        timetableGrid.getChildren().clear();
+
+        // (0,0) corner
+        timetableGrid.add(makeHeaderLabel(""), 0, 0);
+
+        // Day headers row 0
+        for (int d = 1; d <= 7; d++) {
+            Label header = makeHeaderLabel(DAY_LABELS[d - 1]);
+            timetableGrid.add(header, d, 0);
+        }
+
+        // Slot labels col 0
+        for (int s = 1; s <= 4; s++) {
+            Label slot = makeSlotLabel(SLOT_LABELS[s - 1]);
+            timetableGrid.add(slot, 0, s);
+        }
+
+        // Data cells
+        for (int s = 1; s <= 4; s++) {
+            for (int d = 1; d <= 7; d++) {
+                VBox cell = makeDataCell(s);
+                cell.setId(cellId(s, d));
+                GridPane.setHgrow(cell, Priority.ALWAYS);
+                cell.setMaxWidth(Double.MAX_VALUE);
+                timetableGrid.add(cell, d, s);
+            }
+        }
+    }
+
+    private VBox findCell(int slotRow, int dayCol) {
+        String id = cellId(slotRow, dayCol);
+        for (Node n : timetableGrid.getChildren()) {
+            if (n instanceof VBox v && id.equals(v.getId())) return v;
+        }
+        return null;
+    }
+
+    private String cellId(int slotRow, int dayCol) {
+        return "cell_r" + slotRow + "_c" + dayCol;
+    }
+
+    private Label makeHeaderLabel(String text) {
+        Label lb = new Label(text);
+        lb.getStyleClass().add("tt-header");
+        lb.setMaxWidth(Double.MAX_VALUE);
+        GridPane.setHgrow(lb, Priority.ALWAYS);
+        return lb;
+    }
+
+    private Label makeSlotLabel(String text) {
+        Label lb = new Label(text);
+        lb.getStyleClass().add("tt-slot");
+        lb.setWrapText(true);
+        lb.setMaxWidth(Double.MAX_VALUE);
+        GridPane.setHgrow(lb, Priority.ALWAYS);
+        return lb;
+    }
+
+    private VBox makeDataCell(int slotRow) {
+        VBox box = new VBox(6);
+        box.getStyleClass().add("tt-cell");
+        box.getStyleClass().add("slot-" + slotRow);
+        box.setFillWidth(true);
+        box.setMaxWidth(Double.MAX_VALUE);
+        return box;
+    }
+
+    // ===== mapping: hỗ trợ cả DB dùng 1..7 (Mon..Sun) và 2..8 (T2..CN) =====
     private int mapDayToCol(int dayOfWeek) {
-        // nếu DB bạn dùng 2..8 (T2..CN) thì:
-        // 2->1, 3->2, ... 7->6, 8->7
+        // case DB 2..8 (T2..CN)
         if (dayOfWeek == 8) return 7;
         if (dayOfWeek >= 2 && dayOfWeek <= 7) return dayOfWeek - 1;
 
-        // nếu lỡ DB dùng ISO 1..7 (Mon..Sun)
-        if (dayOfWeek == 7) return 7; // Sun
+        // case ISO 1..7 (Mon..Sun)
+        if (dayOfWeek == 7) return 7; // Sunday
         if (dayOfWeek >= 1 && dayOfWeek <= 6) return dayOfWeek;
 
         return 1;
     }
 
-    private int mapTimeToSlot(ScheduleRow r) {
-        if (r.getStartTime() == null) return 1;
-        int h = r.getStartTime().getHour();
-        if (h < 9) return 1;
-        if (h < 12) return 2;
-        if (h < 15) return 3;
+    private int timeToSlot(LocalTime start) {
+        if (start == null) return -1;
+        LocalTime CA2_START = LocalTime.of(9, 20);
+        LocalTime CA3_START = LocalTime.of(12, 30);
+        LocalTime CA4_START = LocalTime.of(15, 5);
+
+        if (start.isBefore(CA2_START)) return 1;
+        if (start.isBefore(CA3_START)) return 2;
+        if (start.isBefore(CA4_START)) return 3;
         return 4;
     }
 
-    private String key(int row, int col) { return row + ":" + col; }
+    private boolean blank(String s) { return s == null || s.isBlank(); }
+    private String nvl(String s) { return s == null ? "" : s; }
 
-    private String shorten(String s, int n) {
-        if (s == null) return "";
-        String t = s.trim();
-        if (t.length() <= n) return t;
-        return t.substring(0, n - 1) + "…";
-    }
-
-    private String nullToDots(String s) { return (s == null || s.isBlank()) ? "..." : s; }
-
-    private String dayLabel(int d) {
-        return switch (d) {
-            case 2 -> "T2";
-            case 3 -> "T3";
-            case 4 -> "T4";
-            case 5 -> "T5";
-            case 6 -> "T6";
-            case 7 -> "T7";
-            case 8 -> "CN";
-            // fallback nếu DB ISO 1..7
-            case 1 -> "T2";
-            default -> String.valueOf(d);
-        };
+    private void error(String title, String msg) {
+        Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(msg);
+        a.showAndWait();
     }
 }

@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.stage.Stage;
 import org.example.repository.UserRepository;
 import org.example.service.AuthService;
@@ -18,10 +19,29 @@ import org.example.service.exception.BusinessException;
 public class LoginController {
 
     @FXML private TextField usernameField;
-    @FXML private PasswordField passwordField;
+
+    // Ẩn/hiện mật khẩu
+    @FXML private PasswordField passwordField;      // chế độ ẨN
+    @FXML private TextField passwordTextField;      // chế độ HIỆN
+    @FXML private ToggleButton showPasswordToggle;  // cần gạt
+
     @FXML private Label errorLabel;
 
     private final AuthService authService = new AuthService(new UserRepository());
+
+    @FXML
+    public void initialize() {
+        // Đồng bộ text 2 chiều giữa 2 ô mật khẩu
+        if (passwordTextField != null && passwordField != null) {
+            passwordTextField.textProperty().bindBidirectional(passwordField.textProperty());
+        }
+
+        // Mặc định: ẩn mật khẩu
+        setPasswordVisible(false);
+
+        // Mặc định: ẩn lỗi
+        clearError();
+    }
 
     @FXML
     public void loginHandle(ActionEvent event) {
@@ -31,10 +51,8 @@ public class LoginController {
         try {
             clearError();
 
-            // ✅ AuthService.login sẽ tự set SessionContext.set(username, role)
             authService.login(username, password);
 
-            // ✅ Lấy role từ session
             String role = SessionContext.getRole();
             if (role == null) {
                 setError("Không lấy được role sau khi đăng nhập.");
@@ -43,8 +61,8 @@ public class LoginController {
 
             switch (role.toUpperCase()) {
                 case "LECTURER" -> switchScene(event, "/app/lecturer/LecturerScene.fxml", "Lecturer Dashboard");
-                case "STUDENT" -> switchScene(event, "/app/student/StudentScene.fxml", "Student Dashboard");
-                default -> setError("Role không hợp lệ: " + role);
+                case "STUDENT"  -> switchScene(event, "/app/student/StudentScene.fxml", "Student Dashboard");
+                default         -> setError("Role không hợp lệ: " + role);
             }
 
         } catch (BusinessException be) {
@@ -52,6 +70,39 @@ public class LoginController {
         } catch (Exception ex) {
             ex.printStackTrace();
             setError("Lỗi hệ thống!");
+        }
+    }
+
+    // ===== Toggle switch handler =====
+    @FXML
+    private void togglePassword(ActionEvent event) {
+        boolean show = showPasswordToggle != null && showPasswordToggle.isSelected();
+        setPasswordVisible(show);
+    }
+
+    // ===== Helpers =====
+    private void setPasswordVisible(boolean visible) {
+        // visible = true => hiện TextField, ẩn PasswordField
+        if (passwordTextField != null) {
+            passwordTextField.setVisible(visible);
+            passwordTextField.setManaged(visible);
+        }
+        if (passwordField != null) {
+            passwordField.setVisible(!visible);
+            passwordField.setManaged(!visible);
+        }
+    }
+
+    @FXML
+    private void forgotPasswordHandle(ActionEvent event) {
+        try {
+            Parent root = FXMLLoader.load(getClass().getResource("/app/auth/ForgotPasswordView.fxml"));
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Quên mật khẩu");
+            stage.centerOnScreen();
+        } catch (Exception e) {
+            errorLabel.setText("Không mở được màn quên mật khẩu: " + e.getMessage());
         }
     }
 
@@ -66,11 +117,18 @@ public class LoginController {
     }
 
     private void setError(String msg) {
-        if (errorLabel != null) errorLabel.setText(msg);
-        else System.out.println("[LoginError] " + msg);
+        if (errorLabel != null) {
+            errorLabel.setManaged(true);
+            errorLabel.setVisible(true);
+            errorLabel.setText(msg);
+        }
     }
 
     private void clearError() {
-        if (errorLabel != null) errorLabel.setText("");
+        if (errorLabel != null) {
+            errorLabel.setText("");
+            errorLabel.setVisible(false);
+            errorLabel.setManaged(false);
+        }
     }
 }

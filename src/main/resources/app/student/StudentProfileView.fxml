@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
@@ -10,88 +11,98 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="18" style="-fx-padding: 12;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controller.student.StudentProfileController">
+<VBox spacing="18"
+      styleClass="page-root"
+      stylesheets="@/css/student/student-ui.css"
+      xmlns="http://javafx.com/javafx/25"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.controller.student.StudentProfileController">
 
-    <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #004D40;" text="HỒ SƠ CÁ NHÂN" />
+    <Label styleClass="page-title" text="HỒ SƠ CÁ NHÂN"/>
 
-    <!-- ===== Thông tin cố định ===== -->
-    <VBox spacing="10" style="-fx-border-color: #E0E0E0; -fx-border-width: 1; -fx-padding: 12; -fx-background-color: #FFFFFF;">
-        <Label style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #333;" text="Thông tin cố định" />
+    <!-- Thông tin cố định -->
+    <VBox spacing="10" styleClass="card">
+        <Label styleClass="card-title" text="Thông tin cố định"/>
 
-        <GridPane hgap="12" vgap="10">
+        <GridPane hgap="14" vgap="12">
             <columnConstraints>
-                <ColumnConstraints prefWidth="140" />
-                <ColumnConstraints hgrow="ALWAYS" />
-                <ColumnConstraints prefWidth="140" />
-                <ColumnConstraints hgrow="ALWAYS" />
+                <ColumnConstraints prefWidth="140"/>
+                <ColumnConstraints hgrow="ALWAYS"/>
+                <ColumnConstraints prefWidth="140"/>
+                <ColumnConstraints hgrow="ALWAYS"/>
             </columnConstraints>
 
-            <Label text="Mã sinh viên:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-            <Label fx:id="lblStudentId" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+            <rowConstraints>
+                <RowConstraints/>
+                <RowConstraints/>
+                <RowConstraints/>
+                <RowConstraints/>
+                <RowConstraints/>
+            </rowConstraints>
 
-            <Label text="Họ và tên:" GridPane.columnIndex="2" GridPane.rowIndex="0" />
-            <Label fx:id="lblFullName" GridPane.columnIndex="3" GridPane.rowIndex="0" />
+            <Label styleClass="label-muted" text="Mã sinh viên:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+            <Label fx:id="lblStudentId" styleClass="value-label" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
 
-            <Label text="Ngày sinh:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
-            <Label fx:id="lblDob" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label styleClass="label-muted" text="Họ và tên:" GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+            <Label fx:id="lblFullName" styleClass="value-label" GridPane.columnIndex="3" GridPane.rowIndex="0"/>
 
-            <Label text="Giới tính:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-            <Label fx:id="lblGender" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+            <Label styleClass="label-muted" text="Ngày sinh:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+            <Label fx:id="lblDob" styleClass="value-label" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
-            <Label text="Khoa/Viện:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
-            <Label fx:id="lblDepartment" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <Label styleClass="label-muted" text="Giới tính:" GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+            <Label fx:id="lblGender" styleClass="value-label" GridPane.columnIndex="3" GridPane.rowIndex="1"/>
 
-            <Label text="Ngành:" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-            <Label fx:id="lblMajor" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+            <Label styleClass="label-muted" text="Khoa/Viện:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+            <Label fx:id="lblDepartment" styleClass="value-label" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
 
-            <Label text="Lớp:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
-            <Label fx:id="lblClassName" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            <Label styleClass="label-muted" text="Ngành:" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+            <Label fx:id="lblMajor" styleClass="value-label" GridPane.columnIndex="3" GridPane.rowIndex="2"/>
 
-            <Label text="Năm nhập học:" GridPane.columnIndex="2" GridPane.rowIndex="3" />
-            <Label fx:id="lblAdmissionYear" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+            <Label styleClass="label-muted" text="Lớp:" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+            <Label fx:id="lblClassName" styleClass="value-label" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
 
-            <Label text="Điểm rèn luyện:" GridPane.columnIndex="0" GridPane.rowIndex="4" />
-            <Label fx:id="lblTrainingScore" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+            <Label styleClass="label-muted" text="Năm nhập học:" GridPane.columnIndex="2" GridPane.rowIndex="3"/>
+            <Label fx:id="lblAdmissionYear" styleClass="value-label" GridPane.columnIndex="3" GridPane.rowIndex="3"/>
 
-            <Label text="Trạng thái:" GridPane.columnIndex="2" GridPane.rowIndex="4" />
-            <Label fx:id="lblStatus" GridPane.columnIndex="3" GridPane.rowIndex="4" />
-         <rowConstraints>
-            <RowConstraints />
-            <RowConstraints />
-            <RowConstraints />
-            <RowConstraints />
-            <RowConstraints />
-         </rowConstraints>
+            <Label styleClass="label-muted" text="Điểm rèn luyện:" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+            <Label fx:id="lblTrainingScore" styleClass="value-label" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+
+            <Label styleClass="label-muted" text="Trạng thái:" GridPane.columnIndex="2" GridPane.rowIndex="4"/>
+            <Label fx:id="lblStatus" styleClass="value-label" GridPane.columnIndex="3" GridPane.rowIndex="4"/>
         </GridPane>
     </VBox>
 
-    <!-- ===== Thông tin liên hệ (cập nhật được) ===== -->
-    <VBox spacing="10" style="-fx-border-color: #E0E0E0; -fx-border-width: 1; -fx-padding: 12; -fx-background-color: #FFFFFF;">
-        <Label style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #333;" text="Thông tin liên hệ" />
+    <!-- Thông tin liên hệ -->
+    <VBox spacing="12" styleClass="card">
+        <Label styleClass="card-title" text="Thông tin liên hệ"/>
 
-        <GridPane hgap="12" vgap="10">
+        <GridPane hgap="14" vgap="12">
             <columnConstraints>
-                <ColumnConstraints prefWidth="140" />
-                <ColumnConstraints hgrow="ALWAYS" />
+                <ColumnConstraints prefWidth="140"/>
+                <ColumnConstraints hgrow="ALWAYS"/>
             </columnConstraints>
 
-            <Label text="Số điện thoại:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-            <TextField fx:id="tfPhone" promptText="VD: 09xxxxxxxx" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+            <rowConstraints>
+                <RowConstraints/>
+                <RowConstraints/>
+                <RowConstraints/>
+            </rowConstraints>
 
-            <Label text="Email:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
-            <TextField fx:id="tfEmail" promptText="VD: abc@gmail.com" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label styleClass="label-muted" text="Số điện thoại:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+            <TextField fx:id="tfPhone" promptText="VD: 09xxxxxxxx" styleClass="input"
+                       GridPane.columnIndex="1" GridPane.rowIndex="0"/>
 
-            <Label text="Địa chỉ:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
-            <TextArea fx:id="taAddress" prefRowCount="3" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-         <rowConstraints>
-            <RowConstraints />
-            <RowConstraints />
-            <RowConstraints />
-         </rowConstraints>
+            <Label styleClass="label-muted" text="Email:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+            <TextField fx:id="tfEmail" promptText="VD: abc@gmail.com" styleClass="input"
+                       GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+            <Label styleClass="label-muted" text="Địa chỉ:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+            <TextArea fx:id="taAddress" prefRowCount="3" wrapText="true" styleClass="input"
+                      GridPane.columnIndex="1" GridPane.rowIndex="2"/>
         </GridPane>
 
         <HBox alignment="CENTER_RIGHT" spacing="10">
-            <Button fx:id="btnSave" onAction="#saveHandle" style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-background-radius: 6;" text="Lưu cập nhật" />
+            <Button fx:id="btnSave" onAction="#saveHandle" text="Lưu cập nhật" styleClass="btn-primary"/>
         </HBox>
     </VBox>
 

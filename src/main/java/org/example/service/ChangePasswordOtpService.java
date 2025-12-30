@@ -42,22 +42,34 @@ public class ChangePasswordOtpService {
         }
     }
 
-    public void verifyOtpAndChangePassword(String username, String otp, String newPassword) {
+    public void verifyOldPasswordOtpAndChangePassword(String username, String oldPassword, String otp, String newPassword) {
         try {
             if (newPassword == null || newPassword.isBlank())
                 throw new IllegalArgumentException("Mật khẩu mới không được rỗng.");
             if (newPassword.length() < 6)
                 throw new IllegalArgumentException("Mật khẩu mới phải >= 6 ký tự.");
 
+            // state check
+            String state = passRepo.getState(username);
+            if (state == null) throw new RuntimeException("Tài khoản không tồn tại.");
+            if (!"ACTIVE".equalsIgnoreCase(state))
+                throw new RuntimeException("Tài khoản đang ở trạng thái: " + state);
+
+            // old password check (BẮT BUỘC)
+            boolean okOld = passRepo.verifyOldPassword(username, oldPassword);
+            if (!okOld) throw new RuntimeException("Mật khẩu hiện tại không đúng.");
+
+            // otp check
             var row = otpRepo.getOtp(username);
             if (row == null) throw new RuntimeException("Bạn chưa bấm gửi OTP hoặc OTP đã bị xoá.");
 
-            if (LocalDateTime.now().isAfter(row.expiresAt()))
+            if (java.time.LocalDateTime.now().isAfter(row.expiresAt()))
                 throw new RuntimeException("OTP đã hết hạn. Hãy bấm gửi lại OTP.");
 
             if (otp == null || !otp.trim().equals(row.otp()))
                 throw new RuntimeException("OTP không đúng.");
 
+            // update
             int updated = passRepo.updatePassword(username, newPassword);
             if (updated != 1) throw new RuntimeException("Không cập nhật được mật khẩu.");
 
@@ -74,4 +86,45 @@ public class ChangePasswordOtpService {
         if (at <= 1) return "***" + email.substring(at);
         return email.charAt(0) + "***" + email.substring(at - 1);
     }
+
+    // Quên mật khẩu
+    public void verifyOtpAndResetPassword(String username, String otp, String newPassword) {
+        try {
+            if (username == null || username.isBlank())
+                throw new IllegalArgumentException("Username không được rỗng.");
+
+            if (newPassword == null || newPassword.isBlank())
+                throw new IllegalArgumentException("Mật khẩu mới không được rỗng.");
+            if (newPassword.length() < 6)
+                throw new IllegalArgumentException("Mật khẩu mới phải >= 6 ký tự.");
+
+            // state check
+            String state = passRepo.getState(username);
+            if (state == null) throw new RuntimeException("Tài khoản không tồn tại.");
+            if (!"ACTIVE".equalsIgnoreCase(state))
+                throw new RuntimeException("Tài khoản đang ở trạng thái: " + state);
+
+            // otp check
+            var row = otpRepo.getOtp(username);
+            if (row == null) throw new RuntimeException("Bạn chưa bấm gửi OTP hoặc OTP đã bị xoá.");
+
+            if (java.time.LocalDateTime.now().isAfter(row.expiresAt()))
+                throw new RuntimeException("OTP đã hết hạn. Hãy bấm gửi lại OTP.");
+
+            if (otp == null || !otp.trim().equals(row.otp()))
+                throw new RuntimeException("OTP không đúng.");
+
+            // update password
+            int updated = passRepo.updatePassword(username, newPassword);
+            if (updated != 1) throw new RuntimeException("Không cập nhật được mật khẩu.");
+
+            otpRepo.deleteOtp(username);
+
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Quên mật khẩu thất bại: " + e.getMessage(), e);
+        }
+    }
+
 }
