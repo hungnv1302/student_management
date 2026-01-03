@@ -2,7 +2,7 @@ package org.example.service;
 
 public class SessionContext {
 
-    private static String username;
+    private static String username; // dùng như userId thực tế (lecturer_id/student_id)
     private static String role;
 
     private SessionContext() {}
@@ -17,24 +17,13 @@ public class SessionContext {
         role = null;
     }
 
-    public static String getUsername() {
-        return username;
-    }
+    public static String getUsername() { return username; }
+    public static String getUserId() { return username; } // ✅ alias
 
-    public static String getRole() {
-        return role;
-    }
+    public static String getRole() { return role; }
 
-    public static boolean isLoggedIn() {
-        return username != null;
-    }
+    public static boolean isLoggedIn() { return username != null; }
 
-    public static boolean isStudent() {
-        return "STUDENT".equalsIgnoreCase(role);
-    }
-
-    public static boolean isLecturer() {
-        return "LECTURER".equalsIgnoreCase(role);
-    }
-
+    public static boolean isStudent() { return "STUDENT".equalsIgnoreCase(role); }
+    public static boolean isLecturer() { return "LECTURER".equalsIgnoreCase(role); }
 }

@@ -1,34 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.control.Button?>
 
-<VBox spacing="20.0" style="-fx-padding: 0;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
-    <Label text="LỚP HỌC PHẦN ĐƯỢC PHÂN CÔNG" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #004D40;" />
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-    <Label text="Danh sách các lớp bạn đang phụ trách:" style="-fx-font-size: 16; -fx-font-weight: bold;" />
+<VBox spacing="14.0" style="-fx-padding: 0;"
+      xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.controller.lecturer.LecturerTeachingScheduleController">
 
-    <TableView prefHeight="250.0" style="-fx-border-color: #CCCCCC;">
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Label text="LỚP HỌC PHẦN ĐƯỢC PHÂN CÔNG"
+               style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #004D40;" />
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lecturerIdLabel" text="Mã GV: --" style="-fx-font-size: 13; -fx-text-fill: #555;"/>
+        <Button text="Tải lại" onAction="#refresh"/>
+    </HBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Năm:"/>
+        <ComboBox fx:id="yearCombo" prefWidth="110"/>
+
+        <Label text="Kỳ:"/>
+        <ComboBox fx:id="semCombo" prefWidth="80"/>
+
+        <Button text="Lọc" onAction="#filterByTerm"/>
+        <Button text="Tất cả" onAction="#showAllTerms"/>
+    </HBox>
+
+    <Label text="Danh sách các lớp bạn đang phụ trách:"
+           style="-fx-font-size: 16; -fx-font-weight: bold;" />
+
+    <TableView fx:id="assignedTable" prefHeight="240.0" style="-fx-border-color: #CCCCCC;">
         <columns>
-            <TableColumn prefWidth="100.0" text="Mã Lớp" />
-            <TableColumn prefWidth="250.0" text="Tên Môn học" />
-            <TableColumn prefWidth="100.0" text="Số lượng SV" />
-            <TableColumn prefWidth="150.0" text="Thời gian" />
-            <TableColumn prefWidth="100.0" text="Thao tác" />
+            <TableColumn fx:id="colClassId" prefWidth="120.0" text="Mã Lớp" />
+            <TableColumn fx:id="colSubjectName" prefWidth="320.0" text="Tên Môn học" />
+            <TableColumn fx:id="colStudentCount" prefWidth="140.0" text="Số lượng SV" />
+            <TableColumn fx:id="colTimeInfo" prefWidth="320.0" text="Thời gian" />
+            <TableColumn fx:id="colAction" prefWidth="110.0" text="Thao tác" />
         </columns>
     </TableView>
 
-    <Label text="Danh sách Sinh viên trong Lớp đã chọn:" style="-fx-font-size: 16; -fx-font-weight: bold;" />
+    <Label text="Danh sách Sinh viên trong Lớp đã chọn:"
+           style="-fx-font-size: 16; -fx-font-weight: bold;" />
 
-    <TableView prefHeight="250.0" style="-fx-border-color: #CCCCCC;">
+    <TableView fx:id="studentsTable" prefHeight="240.0" style="-fx-border-color: #CCCCCC;">
         <columns>
-            <TableColumn prefWidth="100.0" text="Mã SV" />
-            <TableColumn prefWidth="250.0" text="Họ và Tên" />
-            <TableColumn prefWidth="100.0" text="Email" />
+            <TableColumn fx:id="colStudentId" prefWidth="120.0" text="Mã SV" />
+            <TableColumn fx:id="colFullName" prefWidth="280.0" text="Họ và Tên" />
+            <TableColumn fx:id="colEmail" prefWidth="320.0" text="Email" />
         </columns>
     </TableView>
+
 </VBox>
