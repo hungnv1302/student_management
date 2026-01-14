@@ -35,7 +35,7 @@
             <TableColumn fx:id="colSubjectName" prefWidth="320.0" text="Tên Môn học" />
             <TableColumn fx:id="colStudentCount" prefWidth="140.0" text="Số lượng SV" />
             <TableColumn fx:id="colTimeInfo" prefWidth="320.0" text="Thời gian" />
-            <TableColumn fx:id="colAction" prefWidth="110.0" text="Thao tác" />
+            <TableColumn fx:id="colAction" prefWidth="110.0" text="Thao tác" sortable="false" />
         </columns>
     </TableView>
 

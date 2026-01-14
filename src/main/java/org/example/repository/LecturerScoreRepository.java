@@ -1,7 +1,7 @@
 package org.example.repository;
 
 import org.example.config.DbConfig;
-import org.example.dto.StudentScoreRow;
+import org.example.dto.GradeRowDto;
 
 import java.math.BigDecimal;
 import java.sql.*;
@@ -10,13 +10,11 @@ import java.util.List;
 
 public class LecturerScoreRepository {
 
-    /** check giảng viên có được phân công lớp không (dựa teaching_assignments) */
     public boolean isAssigned(String lecturerId, String classId) throws SQLException {
         String sql = """
             SELECT 1
             FROM qlsv.teaching_assignments
-            WHERE lecturer_id = ?
-              AND class_id = ?
+            WHERE lecturer_id = ? AND class_id = ?
             LIMIT 1
         """;
         try (Connection c = DbConfig.getConnection();
@@ -29,40 +27,42 @@ public class LecturerScoreRepository {
         }
     }
 
-    /** load danh sách SV của lớp + tên từ persons.full_name */
-    public List<StudentScoreRow> findByClass(String lecturerId, String classId) throws SQLException {
+    public List<GradeRowDto> loadRows(String lecturerId, String classId) throws SQLException {
+        // ✅ join thẳng persons.person_id = enrollments.student_id (theo dữ liệu bạn chụp)
         String sql = """
-        SELECT
-            e.enroll_id,
-            e.student_id,
-            p.full_name,
-            e.midterm_score,
-            e.final_score,
-            e.total_score,
-            e.status,
-            e.is_finalized
-        FROM qlsv.enrollments e
-        JOIN qlsv.persons p ON p.person_id = e.student_id
-        WHERE e.class_id = ?
-        ORDER BY e.student_id
-    """;
+            SELECT
+              e.enroll_id,
+              e.student_id,
+              p.full_name,
+              e.midterm_score,
+              e.final_score,
+              e.total_score,
+              e.is_finalized
+            FROM qlsv.enrollments e
+            JOIN qlsv.persons p ON p.person_id = e.student_id
+            WHERE e.class_id = ?
+              AND EXISTS (
+                SELECT 1 FROM qlsv.teaching_assignments ta
+                WHERE ta.class_id = e.class_id AND ta.lecturer_id = ?
+              )
+            ORDER BY e.student_id
+        """;
 
-        List<StudentScoreRow> out = new ArrayList<>();
+        List<GradeRowDto> out = new ArrayList<>();
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-
             ps.setString(1, classId);
+            ps.setString(2, lecturerId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    StudentScoreRow r = new StudentScoreRow();
+                    GradeRowDto r = new GradeRowDto();
                     r.setEnrollId(rs.getInt("enroll_id"));
                     r.setStudentId(rs.getString("student_id"));
                     r.setFullName(rs.getString("full_name"));
-                    r.setMidtermScore((BigDecimal) rs.getObject("midterm_score"));
-                    r.setFinalScore((BigDecimal) rs.getObject("final_score"));
-                    r.setTotalScore((BigDecimal) rs.getObject("total_score"));
-                    r.setStatus(rs.getString("status"));
+                    r.setMidterm((BigDecimal) rs.getObject("midterm_score"));
+                    r.setFin((BigDecimal) rs.getObject("final_score"));
+                    r.setTotal((BigDecimal) rs.getObject("total_score"));
                     r.setFinalized(rs.getBoolean("is_finalized"));
                     out.add(r);
                 }
@@ -71,48 +71,46 @@ public class LecturerScoreRepository {
         return out;
     }
 
-
-    /**
-     * Lưu điểm: chỉ ghi vào ô NULL, và chỉ khi chưa chốt.
-     * (COALESCE giúp không overwrite điểm đã có)
-     */
-    public int updateScoresOnlyIfNull(int enrollId,
-                                      BigDecimal midterm,
-                                      BigDecimal fin,
-                                      BigDecimal total) throws SQLException {
+    // ✅ chỉ update ô NULL + chưa chốt (không overwrite)
+    public void saveDraft(int enrollId, BigDecimal mid, BigDecimal fin, BigDecimal total) throws SQLException {
         String sql = """
-            UPDATE qlsv.enrollments
-            SET
-              midterm_score = COALESCE(midterm_score, ?),
-              final_score   = COALESCE(final_score, ?),
-              total_score   = COALESCE(total_score, ?),
-              updated_at    = NOW()
-            WHERE enroll_id = ?
-              AND is_finalized = FALSE
-        """;
+        UPDATE qlsv.enrollments
+        SET
+          midterm_score = ?,
+          final_score   = ?,
+          total_score   = ?,
+          updated_at    = NOW()
+        WHERE enroll_id = ?
+          AND is_finalized = FALSE
+    """;
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setObject(1, midterm);
-            ps.setObject(2, fin);
-            ps.setObject(3, total);
+            ps.setObject(1, mid, Types.NUMERIC);
+            ps.setObject(2, fin, Types.NUMERIC);
+            ps.setObject(3, total, Types.NUMERIC);
             ps.setInt(4, enrollId);
-            return ps.executeUpdate();
+            ps.executeUpdate();
         }
     }
 
-    /** chốt lớp: khóa tất cả enrollments của class */
-    public int finalizeClass(String classId) throws SQLException {
+
+    public void finalizeClass(String lecturerId, String classId) throws SQLException {
         String sql = """
-            UPDATE qlsv.enrollments
+            UPDATE qlsv.enrollments e
             SET is_finalized = TRUE,
                 updated_at = NOW()
-            WHERE class_id = ?
-              AND is_finalized = FALSE
+            WHERE e.class_id = ?
+              AND e.is_finalized = FALSE
+              AND EXISTS (
+                SELECT 1 FROM qlsv.teaching_assignments ta
+                WHERE ta.class_id = e.class_id AND ta.lecturer_id = ?
+              )
         """;
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, classId);
-            return ps.executeUpdate();
+            ps.setString(2, lecturerId);
+            ps.executeUpdate();
         }
     }
 }

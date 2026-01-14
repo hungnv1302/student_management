@@ -33,24 +33,28 @@ public class LecturerTeachingScheduleController {
     @FXML private TableColumn<StudentInClassDto, String> colEmail;
 
     private final TeachingScheduleService service = new TeachingScheduleService();
-    private String lecturerId; // resolved numeric id
+
+    private String lecturerId; // ID thật: lecturer_id
 
     @FXML
     public void initialize() {
+        // Assigned classes table
         colClassId.setCellValueFactory(d -> d.getValue().classIdProperty());
         colSubjectName.setCellValueFactory(d -> d.getValue().subjectNameProperty());
         colStudentCount.setCellValueFactory(d -> d.getValue().studentCountProperty());
         colTimeInfo.setCellValueFactory(d -> d.getValue().timeInfoProperty());
 
+        // Action button - an toàn, không dùng getIndex()
         colAction.setCellFactory(col -> new TableCell<>() {
             private final Button btn = new Button("Xem SV");
             {
-                btn.setOnAction(evt -> {
-                    AssignedClassDto row = getTableView().getItems().get(getIndex());
-                    assignedTable.getSelectionModel().select(row);
-                    loadStudents(row.getClassId());
-                });
                 btn.setMaxWidth(Double.MAX_VALUE);
+                btn.setOnAction(evt -> {
+                    AssignedClassDto row = getTableRow() == null ? null : getTableRow().getItem();
+                    if (row == null) return;
+                    assignedTable.getSelectionModel().select(row);
+                    // chỉ select, listener sẽ loadStudents (tránh gọi 2 lần)
+                });
             }
             @Override
             protected void updateItem(Void item, boolean empty) {
@@ -59,14 +63,17 @@ public class LecturerTeachingScheduleController {
             }
         });
 
+        // Chỉ listener loadStudents 1 lần
         assignedTable.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             if (newV != null) loadStudents(newV.getClassId());
         });
 
+        // Students table
         colStudentId.setCellValueFactory(d -> d.getValue().studentIdProperty());
         colFullName.setCellValueFactory(d -> d.getValue().fullNameProperty());
         colEmail.setCellValueFactory(d -> d.getValue().emailProperty());
 
+        // Sem list fixed
         if (semCombo != null) semCombo.setItems(FXCollections.observableArrayList(1, 2));
 
         bootstrap();
@@ -77,28 +84,34 @@ public class LecturerTeachingScheduleController {
         assignedTable.setItems(FXCollections.observableArrayList());
 
         if (!SessionContext.isLecturer()) {
-            showAlert(Alert.AlertType.WARNING, "Không có quyền", "Bạn không có quyền truy cập màn hình giảng viên.");
+            showAlert(Alert.AlertType.WARNING, "Không có quyền",
+                    "Bạn không có quyền truy cập màn hình giảng viên.");
             return;
         }
 
-        String loginValue = SessionContext.getUsername();
-        try {
-            lecturerId = service.resolveLecturerIdOrThrow(loginValue);
-            if (lecturerIdLabel != null) lecturerIdLabel.setText("Mã GV: " + lecturerId);
+        // ✅ FIX: lấy lecturerId thật từ session
+        lecturerId = SessionContext.getUserId();
+        if (lecturerId == null || lecturerId.isBlank()) {
+            // fallback (nếu bạn chưa sửa login): thử resolve từ loginName
+            String loginName = SessionContext.getLoginName();
+            lecturerId = service.resolveLecturerIdOrThrow(loginName);
+        }
 
-            // Load term list of this lecturer
+        if (lecturerIdLabel != null) lecturerIdLabel.setText("Mã GV: " + lecturerId);
+
+        try {
             List<TeachingScheduleRepository.Term> terms = service.getTermsOfLecturer(lecturerId);
 
+            // Fill year combo
             Set<Integer> years = new LinkedHashSet<>();
             for (var t : terms) years.add(t.termYear());
-
             if (yearCombo != null) yearCombo.setItems(FXCollections.observableArrayList(years));
 
-            // default: newest term of lecturer
+            // Load default (newest term)
             var data = service.getAssignedClassesDefault(lecturerId);
             assignedTable.setItems(FXCollections.observableArrayList(data));
 
-            // set combos to newest term
+            // Set combo selection to newest term
             if (!terms.isEmpty()) {
                 var newest = terms.get(0);
                 if (yearCombo != null) yearCombo.getSelectionModel().select(Integer.valueOf(newest.termYear()));

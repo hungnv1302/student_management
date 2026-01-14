@@ -11,21 +11,29 @@ public class TeachingScheduleRepository {
 
     public record Term(int termYear, int termSem) {}
 
+    /**
+     * Resolve lecturer_id từ:
+     * - lecturer_id trực tiếp
+     * - email (persons.email)
+     * - username (users.username -> users.person_id -> lecturers)
+     *
+     * (Giữ lại để tương thích; nhưng tốt nhất là SessionContext đã lưu userId = lecturer_id)
+     */
     public Optional<String> resolveLecturerId(String login) throws SQLException {
         if (login == null || login.isBlank()) return Optional.empty();
         String v = login.trim();
 
-        // login is lecturer_id?
+        // 1) login is lecturer_id?
         String sql1 = "SELECT lecturer_id FROM qlsv.lecturers WHERE lecturer_id = ?";
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql1)) {
             ps.setString(1, v);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(rs.getString("lecturer_id"));
+                if (rs.next()) return Optional.of(rs.getString(1));
             }
         }
 
-        // login is email? (lecturer_id = persons.person_id)
+        // 2) login is email?
         String sql2 = """
             SELECT l.lecturer_id
             FROM qlsv.lecturers l
@@ -37,20 +45,38 @@ public class TeachingScheduleRepository {
              PreparedStatement ps = c.prepareStatement(sql2)) {
             ps.setString(1, v);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(rs.getString("lecturer_id"));
+                if (rs.next()) return Optional.of(rs.getString(1));
+            }
+        }
+
+        // 3) login is username?
+        String sql3 = """
+            SELECT l.lecturer_id
+            FROM qlsv.users u
+            JOIN qlsv.lecturers l ON l.lecturer_id = u.person_id
+            WHERE u.username = ?
+            LIMIT 1
+        """;
+        try (Connection c = DbConfig.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql3)) {
+            ps.setString(1, v);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return Optional.of(rs.getString(1));
             }
         }
 
         return Optional.empty();
     }
 
-    /** Lấy danh sách các term mà giảng viên có lớp (để fill filter) */
+    /** Lấy danh sách term mà giảng viên có lớp (dựa theo teaching_assignments) */
     public List<Term> findTermsOfLecturer(String lecturerId) throws SQLException {
         String sql = """
-            SELECT DISTINCT term_year, term_sem
-            FROM qlsv.sections
-            WHERE lecturer_id = ?
-            ORDER BY term_year DESC, term_sem DESC
+            SELECT DISTINCT sec.term_year, sec.term_sem
+            FROM qlsv.teaching_assignments ta
+            JOIN qlsv.sections sec ON sec.class_id = ta.class_id
+            WHERE ta.lecturer_id = ?
+              AND COALESCE(ta.role, 'MAIN') = 'MAIN'
+            ORDER BY sec.term_year DESC, sec.term_sem DESC
         """;
         List<Term> out = new ArrayList<>();
         try (Connection c = DbConfig.getConnection();
@@ -65,33 +91,44 @@ public class TeachingScheduleRepository {
         return out;
     }
 
-    /** Lấy lớp theo term (year/sem) */
+    /** Lấy lớp theo term (year/sem) - FILTER bằng teaching_assignments */
     public List<AssignedClassDto> findAssignedClassesByLecturerInTerm(
             String lecturerId, int termYear, int termSem) throws SQLException {
 
         String sql = """
-            SELECT
-                sec.class_id,
-                sub.subject_name,
-                COALESCE(COUNT(DISTINCT e.enroll_id), 0) AS student_count,
-                COALESCE(
+            WITH student_cnt AS (
+                SELECT class_id, COUNT(DISTINCT student_id) AS student_count
+                FROM qlsv.enrollments
+                GROUP BY class_id
+            ),
+            time_info AS (
+                SELECT
+                    ts.class_id,
                     STRING_AGG(
                         (CASE WHEN ts.day_of_week = 8 THEN 'CN' ELSE 'T' || ts.day_of_week::text END)
                         || ' ' || TO_CHAR(ts.start_time, 'HH24:MI')
                         || '-' || TO_CHAR(ts.end_time, 'HH24:MI')
                         || COALESCE(' (' || COALESCE(ts.room, sec.room) || ')', ''),
                         '; ' ORDER BY ts.day_of_week, ts.start_time
-                    ),
-                    'Chưa có lịch'
-                ) AS time_info
-            FROM qlsv.sections sec
+                    ) AS time_info
+                FROM qlsv.time_slots ts
+                JOIN qlsv.sections sec ON sec.class_id = ts.class_id
+                GROUP BY ts.class_id
+            )
+            SELECT
+                sec.class_id,
+                sub.subject_name,
+                COALESCE(sc.student_count, 0) AS student_count,
+                COALESCE(ti.time_info, 'Chưa có lịch') AS time_info
+            FROM qlsv.teaching_assignments ta
+            JOIN qlsv.sections sec ON sec.class_id = ta.class_id
             JOIN qlsv.subjects sub ON sub.subject_id = sec.subject_id
-            LEFT JOIN qlsv.enrollments e ON e.class_id = sec.class_id
-            LEFT JOIN qlsv.time_slots ts ON ts.class_id = sec.class_id
-            WHERE sec.lecturer_id = ?
+            LEFT JOIN student_cnt sc ON sc.class_id = sec.class_id
+            LEFT JOIN time_info  ti ON ti.class_id = sec.class_id
+            WHERE ta.lecturer_id = ?
+              AND COALESCE(ta.role, 'MAIN') = 'MAIN'
               AND sec.term_year = ?
               AND sec.term_sem  = ?
-            GROUP BY sec.class_id, sub.subject_name
             ORDER BY sec.class_id
         """;
 
@@ -117,21 +154,24 @@ public class TeachingScheduleRepository {
         return out;
     }
 
-    /** Lấy tất cả lớp (không lọc term) */
+    /** Lấy tất cả lớp (không lọc term) - FILTER bằng teaching_assignments */
     public List<AssignedClassDto> findAssignedClassesByLecturerAllTerms(String lecturerId) throws SQLException {
         String sql = """
             SELECT
                 sec.class_id,
                 sub.subject_name,
-                COALESCE(COUNT(DISTINCT e.enroll_id), 0) AS student_count,
+                COALESCE(COUNT(DISTINCT e.student_id), 0) AS student_count,
                 (sec.term_year::text || '.' || sec.term_sem::text) AS time_info
-            FROM qlsv.sections sec
+            FROM qlsv.teaching_assignments ta
+            JOIN qlsv.sections sec ON sec.class_id = ta.class_id
             JOIN qlsv.subjects sub ON sub.subject_id = sec.subject_id
             LEFT JOIN qlsv.enrollments e ON e.class_id = sec.class_id
-            WHERE sec.lecturer_id = ?
+            WHERE ta.lecturer_id = ?
+              AND COALESCE(ta.role, 'MAIN') = 'MAIN'
             GROUP BY sec.class_id, sub.subject_name, sec.term_year, sec.term_sem
             ORDER BY sec.term_year DESC, sec.term_sem DESC, sec.class_id
         """;
+
         List<AssignedClassDto> out = new ArrayList<>();
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -142,7 +182,7 @@ public class TeachingScheduleRepository {
                             rs.getString("class_id"),
                             rs.getString("subject_name"),
                             rs.getInt("student_count"),
-                            rs.getString("time_info") // ở chế độ allTerms: hiển thị "2024.2"
+                            rs.getString("time_info")
                     ));
                 }
             }
@@ -150,9 +190,10 @@ public class TeachingScheduleRepository {
         return out;
     }
 
+    /** Danh sách SV trong lớp */
     public List<StudentInClassDto> findStudentsInClass(String classId) throws SQLException {
         String sql = """
-            SELECT st.student_id, p.full_name, p.email
+            SELECT DISTINCT st.student_id, p.full_name, p.email
             FROM qlsv.enrollments e
             JOIN qlsv.students st ON st.student_id = e.student_id
             JOIN qlsv.persons  p  ON p.person_id  = st.student_id

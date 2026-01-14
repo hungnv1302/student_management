@@ -8,15 +8,26 @@ import java.util.List;
 
 public class TeachingScheduleService {
 
-    private final TeachingScheduleRepository repo = new TeachingScheduleRepository();
+    private final TeachingScheduleRepository repo;
 
+    public TeachingScheduleService() {
+        this(new TeachingScheduleRepository());
+    }
+
+    public TeachingScheduleService(TeachingScheduleRepository repo) {
+        this.repo = repo;
+    }
+
+    /** Chỉ dùng khi bạn thật sự cần resolve từ loginName (username/email) */
     public String resolveLecturerIdOrThrow(String login) {
         try {
             return repo.resolveLecturerId(login)
                     .orElseThrow(() -> new IllegalStateException(
                             "Không xác định được lecturer_id từ tài khoản: " + login +
-                                    ". Hãy đăng nhập bằng mã giảng viên (vd 20180001) hoặc cấu hình mapping tài khoản."
+                                    ". Hãy kiểm tra mapping users.person_id hoặc đăng nhập bằng email/mã GV."
                     ));
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Lỗi resolve lecturer_id.", e);
         }
@@ -30,16 +41,11 @@ public class TeachingScheduleService {
         }
     }
 
-    /** Mặc định: lấy theo kỳ mới nhất mà giảng viên có lớp */
     public List<AssignedClassDto> getAssignedClassesDefault(String lecturerId) {
         var terms = getTermsOfLecturer(lecturerId);
         if (terms.isEmpty()) return List.of();
         var newest = terms.get(0);
-        try {
-            return repo.findAssignedClassesByLecturerInTerm(lecturerId, newest.termYear(), newest.termSem());
-        } catch (Exception e) {
-            throw new RuntimeException("Không tải được lớp theo kỳ.", e);
-        }
+        return getAssignedClassesInTerm(lecturerId, newest.termYear(), newest.termSem());
     }
 
     public List<AssignedClassDto> getAssignedClassesInTerm(String lecturerId, int year, int sem) {
