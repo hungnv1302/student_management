@@ -24,10 +24,11 @@
                     <Button fx:id="profileButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#profileHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;" text="  📁 Quản lý Hồ sơ" />
                     <Button fx:id="teachingScheduleButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#teachingScheduleHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;" text="  📅 Xem Lịch dạy" />
                     <Button fx:id="classManagementButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#classManagementHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #E0E0E0; -fx-font-size: 14;" text="  📚 Quản lý Lớp học phần" />
-                    <Button fx:id="scoreManagementButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scoreManagementHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-font-weight: bold; -fx-font-size: 14;" text="  💯 Quản lý Điểm số" /> </VBox>
-
+                    <Button fx:id="scoreManagementButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scoreManagementHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-font-weight: bold; -fx-font-size: 14;" text="  💯 Quản lý Điểm số" />
+                    <Button fx:id="scoreReviewButton" alignment="BASELINE_LEFT" mnemonicParsing="false" onAction="#scoreReviewHandle" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: #00796B; -fx-text-fill: WHITE; -fx-font-weight: bold; -fx-font-size: 14;" text="  💯 Phúc tra điểm" /> </VBox>
                 <VBox VBox.vgrow="ALWAYS" />
 
+                <Button alignment="CENTER" mnemonicParsing="false" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: #B0BEC5; -fx-text-fill: #212121; -fx-font-weight: bold; -fx-cursor: hand;" text="Đổi mật khẩu" />
                 <Button alignment="CENTER" mnemonicParsing="false" prefHeight="50.0" prefWidth="250.0" style="-fx-background-color: #B0BEC5; -fx-text-fill: #212121; -fx-font-weight: bold; -fx-cursor: hand;" text="🚪 Đăng xuất" />
             </children>
         </VBox>

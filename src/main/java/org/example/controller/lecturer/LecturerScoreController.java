@@ -16,6 +16,7 @@ public class LecturerScoreController {
 
     @FXML private TextField classSearchField;
     @FXML private TableView<GradeRowDto> gradeTable;
+    @FXML private Label statusLabel;
 
     @FXML private TableColumn<GradeRowDto, String> colStudentId;
     @FXML private TableColumn<GradeRowDto, String> colFullName;
@@ -39,28 +40,64 @@ public class LecturerScoreController {
         colTotal.setCellValueFactory(c -> c.getValue().totalProperty());
 
         colNote.setCellValueFactory(c ->
-                new javafx.beans.property.SimpleStringProperty(c.getValue().isFinalized() ? "Đã chốt" : "")
+                new javafx.beans.property.SimpleStringProperty(
+                        c.getValue().isFinalized() ? "Đã chốt" : ""
+                )
         );
 
         StringConverter<BigDecimal> converter = new StringConverter<>() {
-            @Override public String toString(BigDecimal v) { return v == null ? "" : v.stripTrailingZeros().toPlainString(); }
-            @Override public BigDecimal fromString(String s) {
+            @Override
+            public String toString(BigDecimal v) {
+                return v == null ? "" : v.stripTrailingZeros().toPlainString();
+            }
+
+            @Override
+            public BigDecimal fromString(String s) {
                 if (s == null) return null;
                 String t = s.trim();
                 if (t.isEmpty()) return null;
-                return new BigDecimal(t);
+                try {
+                    BigDecimal value = new BigDecimal(t);
+                    // Kiểm tra ngay khi nhập
+                    if (value.compareTo(BigDecimal.ZERO) < 0 ||
+                            value.compareTo(BigDecimal.TEN) > 0) {
+                        show(Alert.AlertType.WARNING, "Điểm không hợp lệ",
+                                "Điểm phải trong khoảng 0-10");
+                        return null;
+                    }
+                    return value;
+                } catch (NumberFormatException e) {
+                    show(Alert.AlertType.WARNING, "Lỗi định dạng",
+                            "Vui lòng nhập số hợp lệ");
+                    return null;
+                }
             }
         };
 
-        // chỉ edit khi NULL + chưa chốt
-        setupEditable(colMidterm, converter, GradeRowDto::canEditMidterm, (r, v) -> r.setMidterm(v));
-        setupEditable(colFinal, converter, GradeRowDto::canEditFinal, (r, v) -> r.setFin(v));
+        // Chỉ edit khi chưa chốt điểm
+        setupEditable(colMidterm, converter, GradeRowDto::canEditMidterm,
+                (r, v) -> r.setMidterm(v));
+        setupEditable(colFinal, converter, GradeRowDto::canEditFinal,
+                (r, v) -> r.setFin(v));
 
-        // total không edit (tự tính)
+        // Cột total không cho edit (tự động tính bởi database)
         colTotal.setCellFactory(tc -> new TableCell<>() {
-            @Override protected void updateItem(BigDecimal item, boolean empty) {
+            @Override
+            protected void updateItem(BigDecimal item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty ? null : (item == null ? "" : item.stripTrailingZeros().toPlainString()));
+                if (empty) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item == null ? "" : item.stripTrailingZeros().toPlainString());
+
+                    GradeRowDto r = getTableRow() == null ? null : getTableRow().getItem();
+                    if (r != null && r.isFinalized()) {
+                        setStyle("-fx-background-color: #E8F5E9; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("");
+                    }
+                }
             }
         });
     }
@@ -68,13 +105,34 @@ public class LecturerScoreController {
     @FXML
     public void handleLoad() {
         String classId = safe(classSearchField.getText());
-        String lecturerId = SessionContext.getUsername(); // phải là lecturer_id
+        String lecturerId = SessionContext.getUserId();
+
+        if (lecturerId == null || lecturerId.isBlank()) {
+            show(Alert.AlertType.ERROR, "Lỗi phiên làm việc",
+                    "Không xác định được giảng viên. Vui lòng đăng nhập lại.");
+            return;
+        }
 
         try {
             var rows = service.load(lecturerId, classId);
             data.setAll(rows);
             gradeTable.refresh();
+
+            // Cập nhật status
+            long finalized = rows.stream().filter(GradeRowDto::isFinalized).count();
+            long canCalculate = rows.stream()
+                    .filter(r -> !r.isFinalized() && r.canCalculateTotal())
+                    .count();
+
+            statusLabel.setText(String.format(
+                    "Tổng: %d SV | Đã chốt: %d | Chưa chốt: %d | Có thể tính điểm: %d",
+                    rows.size(), finalized, rows.size() - finalized, canCalculate
+            ));
+            statusLabel.setStyle("-fx-text-fill: #2E7D32;");
+
         } catch (Exception e) {
+            statusLabel.setText("Lỗi tải dữ liệu");
+            statusLabel.setStyle("-fx-text-fill: #C62828;");
             show(Alert.AlertType.ERROR, "Lỗi tải danh sách", e.getMessage());
         }
     }
@@ -82,40 +140,106 @@ public class LecturerScoreController {
     @FXML
     public void handleSave() {
         String classId = safe(classSearchField.getText());
-        String lecturerId = SessionContext.getUsername();
+        String lecturerId = SessionContext.getUserId();
+
+        if (lecturerId == null || lecturerId.isBlank()) {
+            show(Alert.AlertType.ERROR, "Lỗi phiên làm việc",
+                    "Không xác định được giảng viên. Vui lòng đăng nhập lại.");
+            return;
+        }
 
         try {
             service.save(lecturerId, classId, data);
-            // reload để cell vừa được lưu (không còn NULL) => tự khóa
+
+            // Reload để đồng bộ dữ liệu
             data.setAll(service.load(lecturerId, classId));
-            show(Alert.AlertType.INFORMATION, "Thành công", "Đã lưu điểm.");
+            gradeTable.refresh();
+
+            statusLabel.setText("✓ Đã lưu điểm thành công lúc " +
+                    java.time.LocalTime.now().format(
+                            java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")
+                    ));
+            statusLabel.setStyle("-fx-text-fill: #2E7D32;");
+
+            show(Alert.AlertType.INFORMATION, "Thành công",
+                    "Đã lưu điểm. Lưu ý: Điểm chưa được tính tổng và chốt.");
+
         } catch (Exception e) {
+            statusLabel.setText("✗ Lỗi lưu điểm");
+            statusLabel.setStyle("-fx-text-fill: #C62828;");
             show(Alert.AlertType.ERROR, "Lỗi lưu điểm", e.getMessage());
         }
     }
 
     @FXML
-    public void handleFinalize() {
+    public void handleCalculateFinalGrades() {
         String classId = safe(classSearchField.getText());
-        String lecturerId = SessionContext.getUsername();
+        String lecturerId = SessionContext.getUserId();
 
-        Alert c = new Alert(Alert.AlertType.CONFIRMATION);
-        c.setHeaderText("Chốt điểm");
-        c.setContentText("Sau khi chốt sẽ không thể sửa. Bạn chắc chắn?");
-        if (c.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+        if (lecturerId == null || lecturerId.isBlank()) {
+            show(Alert.AlertType.ERROR, "Lỗi phiên làm việc",
+                    "Không xác định được giảng viên. Vui lòng đăng nhập lại.");
+            return;
+        }
+
+        // Kiểm tra có sinh viên nào đủ điều kiện không
+        long canCalculate = data.stream()
+                .filter(r -> !r.isFinalized() && r.canCalculateTotal())
+                .count();
+
+        if (canCalculate == 0) {
+            show(Alert.AlertType.WARNING, "Không thể tính điểm",
+                    "Không có sinh viên nào đủ điều kiện tính điểm.\n" +
+                            "Sinh viên cần có đủ điểm GK và CK, và chưa được chốt điểm.");
+            return;
+        }
+
+        // Xác nhận
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setHeaderText("Xác nhận tính điểm học phần");
+        confirm.setContentText(
+                String.format("Hệ thống sẽ tính điểm học phần cho %d sinh viên.\n\n" +
+                        "Công thức: Điểm TK = Điểm GK × 0.4 + Điểm CK × 0.6\n\n" +
+                        "Sau khi tính, điểm sẽ được CHỐT và KHÔNG THỂ SỬA.\n\n" +
+                        "Bạn có chắc chắn muốn tiếp tục?", canCalculate)
+        );
+
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
 
         try {
-            service.finalizeAll(lecturerId, classId, data);
+            // Lưu điểm trước khi tính
+            service.save(lecturerId, classId, data);
+
+            // Tính điểm học phần
+            int updated = service.calculateAllFinalGrades(lecturerId, classId);
+
+            // Reload để hiển thị kết quả
             data.setAll(service.load(lecturerId, classId));
-            show(Alert.AlertType.INFORMATION, "Thành công", "Đã chốt điểm.");
+            gradeTable.refresh();
+
+            statusLabel.setText(String.format(
+                    "✓ Đã tính điểm thành công cho %d sinh viên", updated
+            ));
+            statusLabel.setStyle("-fx-text-fill: #2E7D32;");
+
+            show(Alert.AlertType.INFORMATION, "Thành công",
+                    String.format("Đã tính và chốt điểm cho %d sinh viên.", updated));
+
         } catch (Exception e) {
-            show(Alert.AlertType.ERROR, "Lỗi chốt điểm", e.getMessage());
+            statusLabel.setText("✗ Lỗi tính điểm");
+            statusLabel.setStyle("-fx-text-fill: #C62828;");
+            show(Alert.AlertType.ERROR, "Lỗi tính điểm", e.getMessage());
         }
     }
 
-    // ===== helper =====
-    @FunctionalInterface private interface CanEdit { boolean test(GradeRowDto r); }
-    @FunctionalInterface private interface Setter { void set(GradeRowDto r, BigDecimal v); }
+    // ===== Helper methods =====
+    @FunctionalInterface
+    private interface CanEdit { boolean test(GradeRowDto r); }
+
+    @FunctionalInterface
+    private interface Setter { void set(GradeRowDto r, BigDecimal v); }
 
     private void setupEditable(TableColumn<GradeRowDto, BigDecimal> col,
                                StringConverter<BigDecimal> converter,
@@ -123,38 +247,46 @@ public class LecturerScoreController {
                                Setter setter) {
 
         col.setCellFactory(tc -> new TextFieldTableCell<>(converter) {
-            @Override public void startEdit() {
-                GradeRowDto r = getTableRow() == null ? null : (GradeRowDto) getTableRow().getItem();
+            @Override
+            public void startEdit() {
+                GradeRowDto r = getTableRow() == null ? null : getTableRow().getItem();
                 if (r == null || !rule.test(r)) return;
                 super.startEdit();
             }
 
-            @Override public void commitEdit(BigDecimal newValue) {
+            @Override
+            public void commitEdit(BigDecimal newValue) {
                 super.commitEdit(newValue);
                 GradeRowDto r = getTableRow().getItem();
                 if (r == null) return;
 
                 setter.set(r, newValue);
-
-                // nếu đủ 2 điểm thì tự tính total
-                BigDecimal total = service.computeTotal(r.getMidterm(), r.getFin());
-                r.setTotal(total);
-
                 gradeTable.refresh();
             }
 
-            @Override public void updateItem(BigDecimal item, boolean empty) {
+            @Override
+            public void updateItem(BigDecimal item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) return;
+                if (empty) {
+                    setStyle("");
+                    return;
+                }
 
-                GradeRowDto r = getTableRow() == null ? null : (GradeRowDto) getTableRow().getItem();
+                GradeRowDto r = getTableRow() == null ? null : getTableRow().getItem();
                 boolean locked = (r == null) || !rule.test(r);
-                setStyle(locked ? "-fx-background-color: #F3F4F6;" : "");
+
+                if (locked) {
+                    setStyle("-fx-background-color: #F3F4F6; -fx-text-fill: #9E9E9E;");
+                } else {
+                    setStyle("");
+                }
             }
         });
     }
 
-    private static String safe(String s) { return s == null ? "" : s.trim(); }
+    private static String safe(String s) {
+        return s == null ? "" : s.trim();
+    }
 
     private void show(Alert.AlertType type, String title, String msg) {
         Alert a = new Alert(type);

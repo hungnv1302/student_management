@@ -1,47 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
 
-<VBox spacing="20.0" style="-fx-padding: 0;"
+<VBox spacing="20.0" style="-fx-padding: 20; -fx-background-color: #FAFAFA;"
       xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.lecturer.LecturerScoreController">
 
     <Label text="QUẢN LÝ ĐIỂM SỐ"
-           style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #333333;" />
+           style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #1976D2;" />
 
-    <HBox alignment="CENTER_LEFT" spacing="10.0"
-          style="-fx-padding: 10; -fx-border-color: #E0E0E0; -fx-border-radius: 5; -fx-background-color: #ECEFF1;">
-        <Label style="-fx-font-weight: bold;" text="Chọn Lớp:" />
+    <!-- Search Section -->
+    <VBox spacing="10.0"
+          style="-fx-padding: 15; -fx-border-color: #E0E0E0; -fx-border-radius: 8; -fx-background-color: white; -fx-background-radius: 8;">
+        <Label style="-fx-font-weight: bold; -fx-font-size: 14;" text="Chọn Lớp Học" />
 
-        <TextField fx:id="classSearchField" prefWidth="350.0"
-                   promptText="Nhập Mã Lớp (VD: 25A001)"
-                   style="-fx-background-radius: 5; -fx-border-color: #CCCCCC;" />
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <TextField fx:id="classSearchField" prefWidth="350.0"
+                       promptText="Nhập Mã Lớp (VD: 25A001)"
+                       style="-fx-background-radius: 5; -fx-border-color: #BDBDBD; -fx-border-width: 1; -fx-padding: 8;" />
 
-        <Button fx:id="loadButton" text="Tải Danh sách" onAction="#handleLoad"
-                style="-fx-background-color: #00796B; -fx-text-fill: white; -fx-background-radius: 5; -fx-cursor: hand;" />
-    </HBox>
+            <Button fx:id="loadButton" text="🔍 Tải Danh sách" onAction="#handleLoad"
+                    style="-fx-background-color: #1976D2; -fx-text-fill: white; -fx-background-radius: 5; -fx-cursor: hand; -fx-padding: 8 20; -fx-font-weight: bold;">
+                <tooltip>
+                    <Tooltip text="Tải danh sách sinh viên của lớp" />
+                </tooltip>
+            </Button>
+        </HBox>
+    </VBox>
 
-    <VBox spacing="15.0">
-        <Label text="Danh sách Sinh viên"
-               style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #004D40;" />
+    <!-- Table Section -->
+    <VBox spacing="15.0"
+          style="-fx-padding: 15; -fx-border-color: #E0E0E0; -fx-border-radius: 8; -fx-background-color: white; -fx-background-radius: 8;">
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <Label text="Danh sách Sinh viên"
+                   style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #424242;" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Label fx:id="statusLabel" text=""
+                   style="-fx-text-fill: #757575; -fx-font-style: italic;" />
+        </HBox>
 
         <TableView fx:id="gradeTable" prefHeight="400.0" editable="true"
-                   style="-fx-border-color: #CCCCCC;">
+                   style="-fx-border-color: #E0E0E0; -fx-border-width: 1; -fx-border-radius: 5;">
             <columns>
-                <TableColumn fx:id="colStudentId" prefWidth="100.0" text="Mã SV" />
-                <TableColumn fx:id="colFullName"  prefWidth="250.0" text="Họ Tên SV" />
-                <TableColumn fx:id="colMidterm"   prefWidth="80.0"  text="Điểm QT" />
-                <TableColumn fx:id="colFinal"     prefWidth="80.0"  text="Điểm Thi" />
-                <TableColumn fx:id="colTotal"     prefWidth="80.0"  text="Điểm Tổng" />
-                <TableColumn fx:id="colNote"      prefWidth="150.0" text="Ghi chú" />
+                <TableColumn fx:id="colStudentId" prefWidth="100.0" text="Mã SV"
+                             resizable="false" sortable="true" />
+                <TableColumn fx:id="colFullName"  prefWidth="250.0" text="Họ và Tên"
+                             resizable="true" sortable="true" />
+                <TableColumn fx:id="colMidterm"   prefWidth="100.0"  text="Điểm GK"
+                             resizable="false" sortable="true" />
+                <TableColumn fx:id="colFinal"     prefWidth="100.0"  text="Điểm CK"
+                             resizable="false" sortable="true" />
+                <TableColumn fx:id="colTotal"     prefWidth="100.0"  text="Điểm TK"
+                             resizable="false" sortable="true" />
+                <TableColumn fx:id="colNote"      prefWidth="120.0" text="Trạng thái"
+                             resizable="false" sortable="false" />
             </columns>
+            <placeholder>
+                <Label text="Chưa có dữ liệu. Vui lòng nhập mã lớp và nhấn 'Tải Danh sách'"
+                       style="-fx-text-fill: #9E9E9E; -fx-font-style: italic;" />
+            </placeholder>
         </TableView>
 
-        <HBox alignment="CENTER_RIGHT" spacing="15.0">
+        <!-- Action Buttons -->
+        <HBox alignment="CENTER_RIGHT" spacing="15.0" style="-fx-padding: 10 0 0 0;">
             <Button fx:id="saveButton" text="💾 Lưu Điểm" onAction="#handleSave"
-                    style="-fx-background-color: #4CAF50; -fx-text-fill: WHITE; -fx-background-radius: 5; -fx-font-weight: bold;" />
-            <Button fx:id="finalizeButton" text="✅ TÍNH ĐIỂM HỌC PHẦN" onAction="#handleFinalize"
-                    style="-fx-background-color: #FF7043; -fx-text-fill: WHITE; -fx-background-radius: 5; -fx-font-weight: bold;" />
+                    style="-fx-background-color: #43A047; -fx-text-fill: WHITE; -fx-background-radius: 5; -fx-font-weight: bold; -fx-padding: 10 25; -fx-cursor: hand;">
+                <tooltip>
+                    <Tooltip text="Lưu điểm GK và CK (chưa tính điểm tổng kết)" />
+                </tooltip>
+            </Button>
+            <Button fx:id="calculateButton" text="📊 Tính Điểm Học Phần" onAction="#handleCalculateFinalGrades"
+                    style="-fx-background-color: #E53935; -fx-text-fill: WHITE; -fx-background-radius: 5; -fx-font-weight: bold; -fx-padding: 10 25; -fx-cursor: hand;">
+                <tooltip>
+                    <Tooltip text="Tính điểm tổng kết và chốt điểm - KHÔNG thể sửa sau khi tính!" />
+                </tooltip>
+            </Button>
         </HBox>
+
+        <!-- Help Text -->
+        <VBox spacing="5" style="-fx-padding: 10 0 0 0;">
+            <Label text="💡 Hướng dẫn sử dụng:"
+                   style="-fx-text-fill: #1976D2; -fx-font-size: 12; -fx-font-weight: bold;" />
+            <Label text="   • Click đúp vào ô điểm để nhập/sửa điểm (chỉ nhập từ 0-10)"
+                   style="-fx-text-fill: #757575; -fx-font-size: 11;" />
+            <Label text="   • Nhấn 'Lưu Điểm' để lưu điểm GK và CK (chưa tính tổng)"
+                   style="-fx-text-fill: #757575; -fx-font-size: 11;" />
+            <Label text="   • Nhấn 'Tính Điểm Học Phần' để tính điểm TK = GK × 0.4 + CK × 0.6 và chốt điểm"
+                   style="-fx-text-fill: #757575; -fx-font-size: 11;" />
+            <Label text="   • Sau khi tính điểm, điểm sẽ bị CHỐT và KHÔNG THỂ chỉnh sửa"
+                   style="-fx-text-fill: #D32F2F; -fx-font-size: 11; -fx-font-weight: bold;" />
+        </VBox>
     </VBox>
 </VBox>

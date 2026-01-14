@@ -24,6 +24,8 @@ public class LecturerDashboardController {
     private Button classManagementButton;
     @FXML
     private Button scoreManagementButton; // Nút Active mặc định
+    @FXML
+    private Button scoreReviewButton;
 
     // Danh sách tất cả các nút Sidebar
     private List<Button> sidebarButtons;
@@ -37,7 +39,7 @@ public class LecturerDashboardController {
     @FXML
     public void initialize() {
         // Khởi tạo danh sách các nút
-        sidebarButtons = Arrays.asList(profileButton, teachingScheduleButton, classManagementButton, scoreManagementButton);
+        sidebarButtons = Arrays.asList(profileButton, teachingScheduleButton, classManagementButton, scoreManagementButton, scoreReviewButton);
 
         // Tải View mặc định khi Dashboard được mở (Quản lý Điểm số)
         loadView("LecturerScoreView.fxml", scoreManagementButton);
@@ -63,6 +65,11 @@ public class LecturerDashboardController {
     @FXML
     private void scoreManagementHandle() {
         loadView("LecturerScoreView.fxml", scoreManagementButton);
+    }
+
+    @FXML
+    private void scoreReviewHandle() {
+        loadView("LecturerScoreReview.fxml", scoreReviewButton);
     }
 
     // ********** CƠ CHẾ TẢI VÀ CHUYỂN ĐỔI VIEW **********

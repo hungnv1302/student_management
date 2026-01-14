@@ -12,34 +12,65 @@ public class LecturerScoreService {
     private final LecturerScoreRepository repo = new LecturerScoreRepository();
 
     public List<GradeRowDto> load(String lecturerId, String classId) throws Exception {
-        if (classId == null || classId.isBlank()) throw new IllegalArgumentException("Bạn chưa nhập mã lớp.");
-        if (!repo.isAssigned(lecturerId, classId)) throw new IllegalStateException("Bạn không được phân công lớp này.");
+        if (classId == null || classId.isBlank()) {
+            throw new IllegalArgumentException("Bạn chưa nhập mã lớp.");
+        }
+        if (!repo.isAssigned(lecturerId, classId)) {
+            throw new IllegalStateException("Bạn không được phân công lớp này.");
+        }
         return repo.loadRows(lecturerId, classId.trim());
     }
 
     public BigDecimal computeTotal(BigDecimal mid, BigDecimal fin) {
         if (mid == null || fin == null) return null;
-        return mid.multiply(new BigDecimal("0.4"))
-                .add(fin.multiply(new BigDecimal("0.6")))
+        return mid.multiply(new BigDecimal("0.5"))
+                .add(fin.multiply(new BigDecimal("0.5")))
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
     public void save(String lecturerId, String classId, List<GradeRowDto> rows) throws Exception {
-        if (!repo.isAssigned(lecturerId, classId)) throw new IllegalStateException("Bạn không được phân công lớp này.");
+        if (!repo.isAssigned(lecturerId, classId)) {
+            throw new IllegalStateException("Bạn không được phân công lớp này.");
+        }
 
         for (GradeRowDto r : rows) {
-            if (r.isFinalized()) continue;
+            if (r.isFinalized()) continue; // Bỏ qua sinh viên đã chốt điểm
 
-            BigDecimal total = r.getTotal();
-            if (total == null) total = computeTotal(r.getMidterm(), r.getFin());
+            // Validate điểm trong khoảng 0-10
+            validateScore(r.getMidterm(), "Điểm giữa kỳ");
+            validateScore(r.getFin(), "Điểm cuối kỳ");
 
-            repo.saveDraft(r.getEnrollId(), r.getMidterm(), r.getFin(), total);
+            // Lưu điểm (KHÔNG tính total ở đây)
+            repo.saveDraft(r.getEnrollId(), r.getMidterm(), r.getFin());
         }
     }
 
-    public void finalizeAll(String lecturerId, String classId, List<GradeRowDto> rows) throws Exception {
-        // chốt thì lưu trước
-        save(lecturerId, classId, rows);
-        repo.finalizeClass(lecturerId, classId);
+    // Tính điểm học phần cho toàn bộ lớp
+    public int calculateAllFinalGrades(String lecturerId, String classId) throws Exception {
+        if (!repo.isAssigned(lecturerId, classId)) {
+            throw new IllegalStateException("Bạn không được phân công lớp này.");
+        }
+
+        int updated = repo.calculateFinalGrades(lecturerId, classId);
+
+        if (updated == 0) {
+            throw new IllegalStateException(
+                    "Không có sinh viên nào đủ điều kiện tính điểm. " +
+                            "Sinh viên phải có đủ điểm GK và CK, chưa chốt điểm."
+            );
+        }
+
+        return updated;
+    }
+
+    // Validate điểm phải từ 0-10
+    private void validateScore(BigDecimal score, String label) throws IllegalArgumentException {
+        if (score == null) return; // NULL được phép
+
+        if (score.compareTo(BigDecimal.ZERO) < 0 || score.compareTo(BigDecimal.TEN) > 0) {
+            throw new IllegalArgumentException(
+                    label + " phải trong khoảng 0-10 (giá trị nhập: " + score + ")"
+            );
+        }
     }
 }

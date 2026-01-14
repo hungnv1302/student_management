@@ -28,7 +28,6 @@ public class LecturerScoreRepository {
     }
 
     public List<GradeRowDto> loadRows(String lecturerId, String classId) throws SQLException {
-        // ✅ join thẳng persons.person_id = enrollments.student_id (theo dữ liệu bạn chụp)
         String sql = """
             SELECT
               e.enroll_id,
@@ -40,19 +39,18 @@ public class LecturerScoreRepository {
               e.is_finalized
             FROM qlsv.enrollments e
             JOIN qlsv.persons p ON p.person_id = e.student_id
+            JOIN qlsv.teaching_assignments ta 
+              ON ta.class_id = e.class_id 
+              AND ta.lecturer_id = ?
             WHERE e.class_id = ?
-              AND EXISTS (
-                SELECT 1 FROM qlsv.teaching_assignments ta
-                WHERE ta.class_id = e.class_id AND ta.lecturer_id = ?
-              )
             ORDER BY e.student_id
         """;
 
         List<GradeRowDto> out = new ArrayList<>();
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, classId);
-            ps.setString(2, lecturerId);
+            ps.setString(1, lecturerId);
+            ps.setString(2, classId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -71,36 +69,38 @@ public class LecturerScoreRepository {
         return out;
     }
 
-    // ✅ chỉ update ô NULL + chưa chốt (không overwrite)
-    public void saveDraft(int enrollId, BigDecimal mid, BigDecimal fin, BigDecimal total) throws SQLException {
+    // Lưu điểm (chỉ lưu midterm và final, KHÔNG tính total)
+    public void saveDraft(int enrollId, BigDecimal mid, BigDecimal fin) throws SQLException {
         String sql = """
-        UPDATE qlsv.enrollments
-        SET
-          midterm_score = ?,
-          final_score   = ?,
-          total_score   = ?,
-          updated_at    = NOW()
-        WHERE enroll_id = ?
-          AND is_finalized = FALSE
-    """;
+            UPDATE qlsv.enrollments
+            SET
+              midterm_score = ?,
+              final_score   = ?,
+              updated_at    = NOW()
+            WHERE enroll_id = ?
+              AND is_finalized = FALSE
+        """;
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setObject(1, mid, Types.NUMERIC);
             ps.setObject(2, fin, Types.NUMERIC);
-            ps.setObject(3, total, Types.NUMERIC);
-            ps.setInt(4, enrollId);
+            ps.setInt(3, enrollId);
             ps.executeUpdate();
         }
     }
 
-
-    public void finalizeClass(String lecturerId, String classId) throws SQLException {
+    // Tính điểm học phần (cập nhật total_score + is_finalized)
+    public int calculateFinalGrades(String lecturerId, String classId) throws SQLException {
         String sql = """
             UPDATE qlsv.enrollments e
-            SET is_finalized = TRUE,
-                updated_at = NOW()
+            SET 
+              total_score = (midterm_score * 0.5 + final_score * 0.5),
+              is_finalized = TRUE,
+              updated_at = NOW()
             WHERE e.class_id = ?
               AND e.is_finalized = FALSE
+              AND e.midterm_score IS NOT NULL
+              AND e.final_score IS NOT NULL
               AND EXISTS (
                 SELECT 1 FROM qlsv.teaching_assignments ta
                 WHERE ta.class_id = e.class_id AND ta.lecturer_id = ?
@@ -110,7 +110,7 @@ public class LecturerScoreRepository {
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, classId);
             ps.setString(2, lecturerId);
-            ps.executeUpdate();
+            return ps.executeUpdate(); // Trả về số dòng đã cập nhật
         }
     }
 }

@@ -42,13 +42,12 @@ public class GradeRowDto {
     public BooleanProperty finalizedProperty() { return finalized; }
     public void setFinalized(boolean v) { finalized.set(v); }
 
-    // ===== rules: chỉ chấm được ô NULL + chưa chốt =====
-    // OLD: chỉ edit khi NULL + chưa chốt
-// public boolean canEditMidterm() { return !isFinalized() && getMidterm() == null; }
-// public boolean canEditFinal()   { return !isFinalized() && getFin() == null; }
-
-    // NEW: miễn chưa chốt là edit được
+    // ===== rules: chỉ nhập điểm khi chưa chốt =====
     public boolean canEditMidterm() { return !isFinalized(); }
     public boolean canEditFinal()   { return !isFinalized(); }
 
+    // ===== kiểm tra có đủ điểm để tính tổng không =====
+    public boolean canCalculateTotal() {
+        return !isFinalized() && getMidterm() != null && getFin() != null;
+    }
 }
