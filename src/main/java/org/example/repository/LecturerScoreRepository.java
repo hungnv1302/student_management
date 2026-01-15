@@ -10,23 +10,29 @@ import java.util.List;
 
 public class LecturerScoreRepository {
 
+    /** Kiểm tra giảng viên có được phân công lớp này không - SỬA: lấy cả từ sections.lecturer_id */
     public boolean isAssigned(String lecturerId, String classId) throws SQLException {
         String sql = """
             SELECT 1
-            FROM qlsv.teaching_assignments
-            WHERE lecturer_id = ? AND class_id = ?
+            FROM qlsv.sections sec
+            LEFT JOIN qlsv.teaching_assignments ta 
+                ON ta.class_id = sec.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
+            WHERE sec.class_id = ?
+              AND (ta.lecturer_id = ? OR sec.lecturer_id = ?)
             LIMIT 1
         """;
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, lecturerId);
-            ps.setString(2, classId);
+            ps.setString(1, classId);
+            ps.setString(2, lecturerId);
+            ps.setString(3, lecturerId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
         }
     }
 
+    /** Load danh sách điểm - SỬA: lấy cả từ sections.lecturer_id */
     public List<GradeRowDto> loadRows(String lecturerId, String classId) throws SQLException {
         String sql = """
             SELECT
@@ -39,18 +45,20 @@ public class LecturerScoreRepository {
               e.is_finalized
             FROM qlsv.enrollments e
             JOIN qlsv.persons p ON p.person_id = e.student_id
-            JOIN qlsv.teaching_assignments ta 
-              ON ta.class_id = e.class_id 
-              AND ta.lecturer_id = ?
+            JOIN qlsv.sections sec ON sec.class_id = e.class_id
+            LEFT JOIN qlsv.teaching_assignments ta 
+              ON ta.class_id = e.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
             WHERE e.class_id = ?
+              AND (ta.lecturer_id = ? OR sec.lecturer_id = ?)
             ORDER BY e.student_id
         """;
 
         List<GradeRowDto> out = new ArrayList<>();
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, lecturerId);
-            ps.setString(2, classId);
+            ps.setString(1, classId);
+            ps.setString(2, lecturerId);
+            ps.setString(3, lecturerId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -69,7 +77,7 @@ public class LecturerScoreRepository {
         return out;
     }
 
-    // Lưu điểm (chỉ lưu midterm và final, KHÔNG tính total)
+    /** Lưu điểm (chỉ lưu midterm và final, KHÔNG tính total) */
     public void saveDraft(int enrollId, BigDecimal mid, BigDecimal fin) throws SQLException {
         String sql = """
             UPDATE qlsv.enrollments
@@ -89,7 +97,7 @@ public class LecturerScoreRepository {
         }
     }
 
-    // Tính điểm học phần (cập nhật total_score + is_finalized)
+    /** Tính điểm học phần - SỬA: kiểm tra cả sections.lecturer_id */
     public int calculateFinalGrades(String lecturerId, String classId) throws SQLException {
         String sql = """
             UPDATE qlsv.enrollments e
@@ -102,15 +110,20 @@ public class LecturerScoreRepository {
               AND e.midterm_score IS NOT NULL
               AND e.final_score IS NOT NULL
               AND EXISTS (
-                SELECT 1 FROM qlsv.teaching_assignments ta
-                WHERE ta.class_id = e.class_id AND ta.lecturer_id = ?
+                SELECT 1 
+                FROM qlsv.sections sec
+                LEFT JOIN qlsv.teaching_assignments ta 
+                  ON ta.class_id = sec.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
+                WHERE sec.class_id = e.class_id 
+                  AND (ta.lecturer_id = ? OR sec.lecturer_id = ?)
               )
         """;
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, classId);
             ps.setString(2, lecturerId);
-            return ps.executeUpdate(); // Trả về số dòng đã cập nhật
+            ps.setString(3, lecturerId);
+            return ps.executeUpdate();
         }
     }
 }

@@ -44,8 +44,7 @@ public class TeachingScheduleService {
     public List<AssignedClassDto> getAssignedClassesDefault(String lecturerId) {
         var terms = getTermsOfLecturer(lecturerId);
         if (terms.isEmpty()) return List.of();
-        var newest = terms.get(0);
-        return getAssignedClassesInTerm(lecturerId, newest.termYear(), newest.termSem());
+        return getAssignedClassesAllTerms(lecturerId);
     }
 
     public List<AssignedClassDto> getAssignedClassesInTerm(String lecturerId, int year, int sem) {

@@ -11,14 +11,6 @@ public class TeachingScheduleRepository {
 
     public record Term(int termYear, int termSem) {}
 
-    /**
-     * Resolve lecturer_id từ:
-     * - lecturer_id trực tiếp
-     * - email (persons.email)
-     * - username (users.username -> users.person_id -> lecturers)
-     *
-     * (Giữ lại để tương thích; nhưng tốt nhất là SessionContext đã lưu userId = lecturer_id)
-     */
     public Optional<String> resolveLecturerId(String login) throws SQLException {
         if (login == null || login.isBlank()) return Optional.empty();
         String v = login.trim();
@@ -68,20 +60,22 @@ public class TeachingScheduleRepository {
         return Optional.empty();
     }
 
-    /** Lấy danh sách term mà giảng viên có lớp (dựa theo teaching_assignments) */
+    /** Lấy danh sách term - SỬA: lấy cả từ sections.lecturer_id */
     public List<Term> findTermsOfLecturer(String lecturerId) throws SQLException {
         String sql = """
             SELECT DISTINCT sec.term_year, sec.term_sem
-            FROM qlsv.teaching_assignments ta
-            JOIN qlsv.sections sec ON sec.class_id = ta.class_id
-            WHERE ta.lecturer_id = ?
-              AND COALESCE(ta.role, 'MAIN') = 'MAIN'
+            FROM qlsv.sections sec
+            LEFT JOIN qlsv.teaching_assignments ta 
+                ON ta.class_id = sec.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
+            WHERE (ta.lecturer_id = ? OR sec.lecturer_id = ?)
             ORDER BY sec.term_year DESC, sec.term_sem DESC
         """;
+
         List<Term> out = new ArrayList<>();
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, lecturerId);
+            ps.setString(2, lecturerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(new Term(rs.getInt("term_year"), rs.getInt("term_sem")));
@@ -91,7 +85,7 @@ public class TeachingScheduleRepository {
         return out;
     }
 
-    /** Lấy lớp theo term (year/sem) - FILTER bằng teaching_assignments */
+    /** Lấy lớp theo term - SỬA: lấy cả từ sections.lecturer_id */
     public List<AssignedClassDto> findAssignedClassesByLecturerInTerm(
             String lecturerId, int termYear, int termSem) throws SQLException {
 
@@ -120,13 +114,13 @@ public class TeachingScheduleRepository {
                 sub.subject_name,
                 COALESCE(sc.student_count, 0) AS student_count,
                 COALESCE(ti.time_info, 'Chưa có lịch') AS time_info
-            FROM qlsv.teaching_assignments ta
-            JOIN qlsv.sections sec ON sec.class_id = ta.class_id
+            FROM qlsv.sections sec
             JOIN qlsv.subjects sub ON sub.subject_id = sec.subject_id
+            LEFT JOIN qlsv.teaching_assignments ta 
+                ON ta.class_id = sec.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
             LEFT JOIN student_cnt sc ON sc.class_id = sec.class_id
             LEFT JOIN time_info  ti ON ti.class_id = sec.class_id
-            WHERE ta.lecturer_id = ?
-              AND COALESCE(ta.role, 'MAIN') = 'MAIN'
+            WHERE (ta.lecturer_id = ? OR sec.lecturer_id = ?)
               AND sec.term_year = ?
               AND sec.term_sem  = ?
             ORDER BY sec.class_id
@@ -137,8 +131,9 @@ public class TeachingScheduleRepository {
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, lecturerId);
-            ps.setInt(2, termYear);
-            ps.setInt(3, termSem);
+            ps.setString(2, lecturerId);
+            ps.setInt(3, termYear);
+            ps.setInt(4, termSem);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -154,7 +149,7 @@ public class TeachingScheduleRepository {
         return out;
     }
 
-    /** Lấy tất cả lớp (không lọc term) - FILTER bằng teaching_assignments */
+    /** Lấy tất cả lớp - SỬA: lấy cả từ sections.lecturer_id */
     public List<AssignedClassDto> findAssignedClassesByLecturerAllTerms(String lecturerId) throws SQLException {
         String sql = """
             SELECT
@@ -162,12 +157,12 @@ public class TeachingScheduleRepository {
                 sub.subject_name,
                 COALESCE(COUNT(DISTINCT e.student_id), 0) AS student_count,
                 (sec.term_year::text || '.' || sec.term_sem::text) AS time_info
-            FROM qlsv.teaching_assignments ta
-            JOIN qlsv.sections sec ON sec.class_id = ta.class_id
+            FROM qlsv.sections sec
             JOIN qlsv.subjects sub ON sub.subject_id = sec.subject_id
+            LEFT JOIN qlsv.teaching_assignments ta 
+                ON ta.class_id = sec.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
             LEFT JOIN qlsv.enrollments e ON e.class_id = sec.class_id
-            WHERE ta.lecturer_id = ?
-              AND COALESCE(ta.role, 'MAIN') = 'MAIN'
+            WHERE (ta.lecturer_id = ? OR sec.lecturer_id = ?)
             GROUP BY sec.class_id, sub.subject_name, sec.term_year, sec.term_sem
             ORDER BY sec.term_year DESC, sec.term_sem DESC, sec.class_id
         """;
@@ -176,6 +171,8 @@ public class TeachingScheduleRepository {
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, lecturerId);
+            ps.setString(2, lecturerId);
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(new AssignedClassDto(
