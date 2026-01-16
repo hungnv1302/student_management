@@ -56,7 +56,7 @@ public class LecturerScoreService {
         if (updated == 0) {
             throw new IllegalStateException(
                     "Không có sinh viên nào đủ điều kiện tính điểm. " +
-                            "Sinh viên phải có đủ điểm GK và CK, chưa chốt điểm."
+                            "Sinh viên phải có đủ điểm GK và CK."
             );
         }
 

@@ -41,7 +41,7 @@ public class LecturerScoreController {
 
         colNote.setCellValueFactory(c ->
                 new javafx.beans.property.SimpleStringProperty(
-                        c.getValue().isFinalized() ? "Đã chốt" : ""
+                        c.getValue().isFinalized() ? "Đã tính" : ""
                 )
         );
 
@@ -113,6 +113,15 @@ public class LecturerScoreController {
             return;
         }
 
+        // Kiểm tra classId rỗng
+        if (classId.isBlank()) {
+            data.clear();
+            gradeTable.refresh();
+            statusLabel.setText("Vui lòng nhập mã lớp");
+            statusLabel.setStyle("-fx-text-fill: #FF9800;");
+            return;
+        }
+
         try {
             var rows = service.load(lecturerId, classId);
             data.setAll(rows);
@@ -125,12 +134,16 @@ public class LecturerScoreController {
                     .count();
 
             statusLabel.setText(String.format(
-                    "Tổng: %d SV | Đã chốt: %d | Chưa chốt: %d | Có thể tính điểm: %d",
+                    "Tổng: %d SV | Đã tính: %d | Chưa chốt: %d | Có thể tính điểm: %d",
                     rows.size(), finalized, rows.size() - finalized, canCalculate
             ));
             statusLabel.setStyle("-fx-text-fill: #2E7D32;");
 
         } catch (Exception e) {
+            // Xóa dữ liệu cũ khi có lỗi
+            data.clear();
+            gradeTable.refresh();
+
             statusLabel.setText("Lỗi tải dữ liệu");
             statusLabel.setStyle("-fx-text-fill: #C62828;");
             show(Alert.AlertType.ERROR, "Lỗi tải danh sách", e.getMessage());
@@ -148,6 +161,20 @@ public class LecturerScoreController {
             return;
         }
 
+        // Kiểm tra classId rỗng
+        if (classId.isBlank()) {
+            statusLabel.setText("Vui lòng nhập mã lớp");
+            statusLabel.setStyle("-fx-text-fill: #FF9800;");
+            return;
+        }
+
+        // Kiểm tra có dữ liệu để lưu không
+        if (data.isEmpty()) {
+            show(Alert.AlertType.WARNING, "Không có dữ liệu",
+                    "Vui lòng tải danh sách sinh viên trước khi lưu.");
+            return;
+        }
+
         try {
             service.save(lecturerId, classId, data);
 
@@ -162,9 +189,13 @@ public class LecturerScoreController {
             statusLabel.setStyle("-fx-text-fill: #2E7D32;");
 
             show(Alert.AlertType.INFORMATION, "Thành công",
-                    "Đã lưu điểm. Lưu ý: Điểm chưa được tính tổng và chốt.");
+                    "Đã lưu điểm");
 
         } catch (Exception e) {
+            // Xóa data khi lưu thất bại (có thể do mất quyền)
+            data.clear();
+            gradeTable.refresh();
+
             statusLabel.setText("✗ Lỗi lưu điểm");
             statusLabel.setStyle("-fx-text-fill: #C62828;");
             show(Alert.AlertType.ERROR, "Lỗi lưu điểm", e.getMessage());
@@ -182,6 +213,20 @@ public class LecturerScoreController {
             return;
         }
 
+        // Kiểm tra classId rỗng
+        if (classId.isBlank()) {
+            statusLabel.setText("Vui lòng nhập mã lớp");
+            statusLabel.setStyle("-fx-text-fill: #FF9800;");
+            return;
+        }
+
+        // Kiểm tra có dữ liệu không
+        if (data.isEmpty()) {
+            show(Alert.AlertType.WARNING, "Không có dữ liệu",
+                    "Vui lòng tải danh sách sinh viên trước.");
+            return;
+        }
+
         // Kiểm tra có sinh viên nào đủ điều kiện không
         long canCalculate = data.stream()
                 .filter(r -> !r.isFinalized() && r.canCalculateTotal())
@@ -190,7 +235,7 @@ public class LecturerScoreController {
         if (canCalculate == 0) {
             show(Alert.AlertType.WARNING, "Không thể tính điểm",
                     "Không có sinh viên nào đủ điều kiện tính điểm.\n" +
-                            "Sinh viên cần có đủ điểm GK và CK, và chưa được chốt điểm.");
+                            "Sinh viên phải có đủ điểm GK và CK, và chưa được chốt điểm.");
             return;
         }
 
@@ -199,8 +244,7 @@ public class LecturerScoreController {
         confirm.setHeaderText("Xác nhận tính điểm học phần");
         confirm.setContentText(
                 String.format("Hệ thống sẽ tính điểm học phần cho %d sinh viên.\n\n" +
-                        "Công thức: Điểm TK = Điểm GK × 0.4 + Điểm CK × 0.6\n\n" +
-                        "Sau khi tính, điểm sẽ được CHỐT và KHÔNG THỂ SỬA.\n\n" +
+                        "Công thức: Điểm TK = Điểm GK × 0.5 + Điểm CK × 0.5\n\n" +
                         "Bạn có chắc chắn muốn tiếp tục?", canCalculate)
         );
 
@@ -225,9 +269,13 @@ public class LecturerScoreController {
             statusLabel.setStyle("-fx-text-fill: #2E7D32;");
 
             show(Alert.AlertType.INFORMATION, "Thành công",
-                    String.format("Đã tính và chốt điểm cho %d sinh viên.", updated));
+                    String.format("Đã tính điểm cho %d sinh viên.", updated));
 
         } catch (Exception e) {
+            // Xóa data khi tính điểm thất bại
+            data.clear();
+            gradeTable.refresh();
+
             statusLabel.setText("✗ Lỗi tính điểm");
             statusLabel.setStyle("-fx-text-fill: #C62828;");
             show(Alert.AlertType.ERROR, "Lỗi tính điểm", e.getMessage());

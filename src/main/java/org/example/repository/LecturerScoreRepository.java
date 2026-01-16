@@ -10,29 +10,26 @@ import java.util.List;
 
 public class LecturerScoreRepository {
 
-    /** Kiểm tra giảng viên có được phân công lớp này không - SỬA: lấy cả từ sections.lecturer_id */
+    /** Kiểm tra giảng viên có được phân công lớp này không */
     public boolean isAssigned(String lecturerId, String classId) throws SQLException {
         String sql = """
             SELECT 1
             FROM qlsv.sections sec
-            LEFT JOIN qlsv.teaching_assignments ta 
-                ON ta.class_id = sec.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
             WHERE sec.class_id = ?
-              AND (ta.lecturer_id = ? OR sec.lecturer_id = ?)
+              AND sec.lecturer_id = ?
             LIMIT 1
         """;
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, classId);
             ps.setString(2, lecturerId);
-            ps.setString(3, lecturerId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
         }
     }
 
-    /** Load danh sách điểm - SỬA: lấy cả từ sections.lecturer_id */
+    /** Load danh sách điểm - CHỈ load lớp mà giảng viên được phân công */
     public List<GradeRowDto> loadRows(String lecturerId, String classId) throws SQLException {
         String sql = """
             SELECT
@@ -46,10 +43,8 @@ public class LecturerScoreRepository {
             FROM qlsv.enrollments e
             JOIN qlsv.persons p ON p.person_id = e.student_id
             JOIN qlsv.sections sec ON sec.class_id = e.class_id
-            LEFT JOIN qlsv.teaching_assignments ta 
-              ON ta.class_id = e.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
             WHERE e.class_id = ?
-              AND (ta.lecturer_id = ? OR sec.lecturer_id = ?)
+              AND sec.lecturer_id = ?
             ORDER BY e.student_id
         """;
 
@@ -58,7 +53,6 @@ public class LecturerScoreRepository {
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, classId);
             ps.setString(2, lecturerId);
-            ps.setString(3, lecturerId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -97,7 +91,7 @@ public class LecturerScoreRepository {
         }
     }
 
-    /** Tính điểm học phần - SỬA: kiểm tra cả sections.lecturer_id */
+    /** Tính điểm học phần - CHỈ cho lớp mà giảng viên được phân công */
     public int calculateFinalGrades(String lecturerId, String classId) throws SQLException {
         String sql = """
             UPDATE qlsv.enrollments e
@@ -112,17 +106,14 @@ public class LecturerScoreRepository {
               AND EXISTS (
                 SELECT 1 
                 FROM qlsv.sections sec
-                LEFT JOIN qlsv.teaching_assignments ta 
-                  ON ta.class_id = sec.class_id AND COALESCE(ta.role, 'MAIN') = 'MAIN'
                 WHERE sec.class_id = e.class_id 
-                  AND (ta.lecturer_id = ? OR sec.lecturer_id = ?)
+                  AND sec.lecturer_id = ?
               )
         """;
         try (Connection c = DbConfig.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, classId);
             ps.setString(2, lecturerId);
-            ps.setString(3, lecturerId);
             return ps.executeUpdate();
         }
     }

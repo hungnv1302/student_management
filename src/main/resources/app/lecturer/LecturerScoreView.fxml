@@ -86,10 +86,8 @@
                    style="-fx-text-fill: #757575; -fx-font-size: 11;" />
             <Label text="   • Nhấn 'Lưu Điểm' để lưu điểm GK và CK (chưa tính tổng)"
                    style="-fx-text-fill: #757575; -fx-font-size: 11;" />
-            <Label text="   • Nhấn 'Tính Điểm Học Phần' để tính điểm TK = GK × 0.4 + CK × 0.6 và chốt điểm"
+            <Label text="   • Nhấn 'Tính Điểm Học Phần' để tính điểm TK = GK × 0.5 + CK × 0.5 và chốt điểm"
                    style="-fx-text-fill: #757575; -fx-font-size: 11;" />
-            <Label text="   • Sau khi tính điểm, điểm sẽ bị CHỐT và KHÔNG THỂ chỉnh sửa"
-                   style="-fx-text-fill: #D32F2F; -fx-font-size: 11; -fx-font-weight: bold;" />
         </VBox>
     </VBox>
 </VBox>
